@@ -192,6 +192,7 @@ class TrackerWindow(QMainWindow):
         self._drag_offset = None
         self._mouse_passthrough = False
         self._hotkey_registered = False
+        self._live_result: dict[str, Any] | None = None
         self.setWindowTitle("Nightreign Challenge Tracker")
         self.setWindowFlags(
             Qt.WindowType.Tool
@@ -317,7 +318,14 @@ class TrackerWindow(QMainWindow):
     def monitor_update(self, payload: dict[str, Any], status: str) -> None:
         self.updated.emit(payload, status)
 
-    def _refresh_from_signal(self, _payload: object, status: str) -> None:
+    def _refresh_from_signal(self, payload: object, status: str) -> None:
+        recognition = payload.get("recognition") if isinstance(payload, dict) else None
+        self._live_result = (
+            recognition
+            if isinstance(recognition, dict)
+            and recognition.get("screen") == "result"
+            else None
+        )
         self.monitor_label.setText(status)
         self.refresh()
 
@@ -345,7 +353,9 @@ class TrackerWindow(QMainWindow):
             ),
             None,
         )
-        if active:
+        if self._live_result is not None:
+            self.current_label.setText(self._format_live_result(self._live_result))
+        elif active:
             nightlord = (
                 "Hidden Nightlord"
                 if active.nightlord_hidden and not active.nightlord_name
@@ -377,6 +387,29 @@ class TrackerWindow(QMainWindow):
             self.history.addItem(item)
             if session.id == selected_id:
                 self.history.setCurrentItem(item)
+
+    def _format_live_result(self, recognition: dict[str, Any]) -> str:
+        nightlord_id = recognition.get("nightlord")
+        nightlord_names = getattr(self.monitor, "_nightlord_names", {})
+        nightlord = (
+            nightlord_names.get(nightlord_id)
+            or str(nightlord_id).replace("_", " ").title()
+            if nightlord_id not in (None, "unknown")
+            else "Nightlord pending"
+        )
+        variant = recognition.get("variant")
+        variant_label = (
+            str(variant).replace("_", " ").title()
+            if variant not in (None, "unknown")
+            else "Variant pending"
+        )
+        outcome = recognition.get("outcome")
+        outcome_label = (
+            str(outcome).replace("_", " ").title()
+            if outcome not in (None, "unknown")
+            else "Outcome pending"
+        )
+        return f"Result: {nightlord} · {variant_label} · {outcome_label}"
 
     def toggle_mouse_passthrough(self) -> None:
         if self._mouse_passthrough:

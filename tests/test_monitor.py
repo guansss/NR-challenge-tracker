@@ -103,6 +103,72 @@ class PreparationMonitorTests(unittest.TestCase):
             self.assertFalse(monitor._preparation_active)
 
 
+class ResultMonitorTests(unittest.TestCase):
+    def test_result_stays_active_until_exit_and_keeps_later_identity(self) -> None:
+        results = [
+            {
+                "screen": "result",
+                "nightlord": None,
+                "variant": "unknown",
+                "outcome": "unknown",
+            },
+            {
+                "screen": "result",
+                "nightlord": None,
+                "variant": "unknown",
+                "outcome": "unknown",
+            },
+            {
+                "screen": "result",
+                "nightlord": "libra",
+                "variant": "everdark",
+                "outcome": "day_3_victory",
+            },
+            {"screen": "unknown"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(Path(temp_dir) / "history.yaml")
+            )
+            active = sessions.start_session(
+                nightfarer="Executor",
+                nightlord_name=None,
+                hidden_nightlord=True,
+                started_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+            )
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+                idle_interval_ms=1000,
+                result_interval_ms=200,
+            )
+
+            monitor._process(None)
+            monitor._process(None)
+
+            self.assertTrue(monitor._result_active)
+            self.assertEqual(monitor._sample_interval_ms, 200)
+            self.assertEqual(sessions.snapshot.sessions[-1].id, active.id)
+            self.assertIsNone(sessions.snapshot.sessions[-1].ended_at)
+
+            monitor._process(None)
+
+            self.assertTrue(monitor._result_active)
+            self.assertIsNone(sessions.snapshot.sessions[-1].ended_at)
+
+            monitor._process(None)
+
+            session = sessions.snapshot.sessions[-1]
+            self.assertFalse(monitor._result_active)
+            self.assertEqual(session.status.value, "completed")
+            self.assertEqual(session.result_nightlord_name, "Libra")
+            self.assertEqual(session.nightlord_variant, NightlordVariant.EVERDARK)
+            self.assertEqual(session.progress, Progress.DAY_3_VICTORY)
+
+
 class DebugScreenshotMonitorTests(unittest.TestCase):
     def test_preparation_saves_after_confirmation_and_keeps_each_identity(self) -> None:
         results = [

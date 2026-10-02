@@ -119,6 +119,49 @@ class TrackerWindowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_live_result_is_shown_before_session_finalization(self) -> None:
+        active = Session(
+            id="active-session",
+            started_at=datetime(2026, 10, 3, tzinfo=timezone.utc),
+            nightfarer="Executor",
+            nightlord_hidden=True,
+            status=SessionStatus.ACTIVE,
+        )
+        snapshot = HistorySnapshot(
+            sessions=(active,), stats=calculate_streak((active,))
+        )
+        sessions = Mock(snapshot=snapshot)
+        monitor = Mock()
+        monitor._nightlord_names = {"libra": "Libra"}
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "Disabled",
+            "sync_message": "",
+        }
+
+        window = TrackerWindow(
+            sessions, monitor, title_state, ["Executor"], ["Libra"]
+        )
+        window.monitor_update(
+            {
+                "recognition": {
+                    "screen": "result",
+                    "nightlord": "libra",
+                    "variant": "everdark",
+                    "outcome": "day_3_victory",
+                }
+            },
+            "Monitoring Nightreign",
+        )
+        self.application.processEvents()
+
+        self.assertEqual(
+            window.current_label.text(),
+            "Result: Libra · Everdark · Day 3 Victory",
+        )
+        self.assertIs(snapshot.sessions[0].status, SessionStatus.ACTIVE)
+        window.deleteLater()
+
     def test_history_shows_unresolved_sessions_but_not_discarded_sessions(self) -> None:
         started_at = datetime(2026, 10, 3, tzinfo=timezone.utc)
         ended_at = datetime(2026, 10, 3, 1, 30, tzinfo=timezone.utc)
