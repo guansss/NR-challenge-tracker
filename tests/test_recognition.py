@@ -39,12 +39,40 @@ class RecognitionNightlordTests(unittest.TestCase):
         with (
             patch.object(engine, "_normalized_crop", return_value=image),
             patch.object(engine, "_template_for_frame", return_value=image),
-            patch.object(RecognitionEngine, "_best_match", return_value=(0.554, image)),
+            patch.object(
+                RecognitionEngine,
+                "_best_match",
+                return_value=(0.554, image, (0, 0)),
+            ),
         ):
             result = engine._result_nightlord(image)
 
         self.assertIsNone(result["nightlord"])
         self.assertEqual(result["variant"], "unknown")
+
+    def test_result_identity_includes_actual_matched_template_region(self) -> None:
+        engine = object.__new__(RecognitionEngine)
+        engine.result_search_roi = (0.1, 0.2, 0.8, 0.6)
+        engine.result_templates = {"libra": {"normal": np.zeros((5, 7, 3))}}
+        engine.min_result_template_score = 0.75
+        engine.min_identity_margin = 0.04
+        engine.min_variant_score_margin = 0.004
+        image = np.zeros((50, 100, 3))
+        match_crop = np.zeros((5, 7, 3))
+
+        with (
+            patch.object(engine, "_normalized_crop", return_value=np.zeros((30, 80, 3))),
+            patch.object(engine, "_template_for_frame", return_value=np.zeros((5, 7, 3))),
+            patch.object(
+                RecognitionEngine,
+                "_best_match",
+                return_value=(0.95, match_crop, (3, 4)),
+            ),
+        ):
+            result = engine._result_nightlord(image)
+
+        self.assertEqual(result["nightlord"], "libra")
+        self.assertEqual(result["nightlord_region"], (13, 14, 20, 19))
 
 
 class RecognitionCounterexampleTests(unittest.TestCase):
@@ -101,10 +129,14 @@ class RecognitionDebugImageTests(unittest.TestCase):
         engine.result_search_roi = (0.5, 0.2, 0.2, 0.3)
         source = np.zeros((50, 100, 3), dtype=np.uint8)
 
-        annotated = engine.render_debug_image(source, {"screen": "result"})
+        annotated = engine.render_debug_image(
+            source,
+            {"screen": "result", "nightlord_region": (60, 20, 68, 30)},
+        )
 
         self.assertEqual(tuple(annotated[10, 20]), (0, 210, 255))
         self.assertEqual(tuple(annotated[10, 50]), (220, 50, 220))
+        self.assertEqual(tuple(annotated[20, 60]), (50, 255, 50))
 
 
 if __name__ == "__main__":

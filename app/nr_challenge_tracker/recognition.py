@@ -150,13 +150,19 @@ class RecognitionEngine:
         return float(cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)[0, 0])
 
     @staticmethod
-    def _best_match(region: Any, template: Any) -> tuple[float, Any]:
+    def _best_match(
+        region: Any, template: Any
+    ) -> tuple[float, Any, tuple[int, int] | None]:
         if region.shape[0] < template.shape[0] or region.shape[1] < template.shape[1]:
-            return -1.0, region[:0, :0]
+            return -1.0, region[:0, :0], None
         scores = cv2.matchTemplate(region, template, cv2.TM_CCOEFF_NORMED)
         _, score, _, point = cv2.minMaxLoc(scores)
         x, y = point
-        return float(score), region[y : y + template.shape[0], x : x + template.shape[1]]
+        return (
+            float(score),
+            region[y : y + template.shape[0], x : x + template.shape[1]],
+            point,
+        )
 
     def _result_progress(self, image: Any) -> dict[str, Any]:
         crop = self._normalized_crop(image, self.progress_roi)
@@ -233,22 +239,24 @@ class RecognitionEngine:
         region = self._normalized_crop(image, self.result_search_roi)
         candidates: list[dict[str, Any]] = []
         for nightlord_id, variants in self.result_templates.items():
-            scores: list[tuple[str, float, Any, Any]] = []
+            scores: list[tuple[str, float, Any, Any, tuple[int, int] | None]] = []
             for variant, template in variants.items():
                 key = f"result:{nightlord_id}:{variant}"
                 scaled = self._template_for_frame(key, image, template)
-                score, crop = self._best_match(region, scaled)
-                scores.append((variant, score, crop, scaled))
+                score, crop, point = self._best_match(region, scaled)
+                scores.append((variant, score, crop, scaled, point))
             if scores:
                 ranked_variants = sorted(
                     scores, key=lambda entry: entry[1], reverse=True
                 )
-                variant, score, _, _ = ranked_variants[0]
+                variant, score, _, scaled, point = ranked_variants[0]
                 candidates.append(
                     {
                         "id": nightlord_id,
                         "variant": variant,
                         "score": score,
+                        "match_point": point,
+                        "match_size": (scaled.shape[1], scaled.shape[0]),
                         "variant_score_margin": (
                             score - ranked_variants[1][1]
                             if len(ranked_variants) > 1
@@ -259,7 +267,12 @@ class RecognitionEngine:
 
         candidates.sort(key=lambda entry: entry["score"], reverse=True)
         if not candidates:
-            return {"nightlord": None, "variant": "unknown", "confidence": 0.0}
+            return {
+                "nightlord": None,
+                "variant": "unknown",
+                "confidence": 0.0,
+                "nightlord_region": None,
+            }
         best = candidates[0]
         margin = best["score"] - (
             candidates[1]["score"] if len(candidates) > 1 else 0.0
@@ -273,18 +286,39 @@ class RecognitionEngine:
                 "variant": "unknown",
                 "confidence": best["score"],
                 "identity_margin": margin,
+                "nightlord_region": None,
             }
 
         variant = best["variant"]
         variant_score_margin = best["variant_score_margin"]
         if variant_score_margin < self.min_variant_score_margin:
             variant = "unknown"
+        match_point = best["match_point"]
+        if match_point is None:
+            return {
+                "nightlord": None,
+                "variant": "unknown",
+                "confidence": best["score"],
+                "identity_margin": margin,
+                "nightlord_region": None,
+            }
+        search_left, search_top, _, _ = self._roi_pixels(
+            self.result_search_roi, image.shape[1], image.shape[0]
+        )
+        match_x, match_y = match_point
+        match_width, match_height = best["match_size"]
         return {
             "nightlord": best["id"],
             "variant": variant,
             "confidence": best["score"],
             "identity_margin": margin,
             "variant_score_margin": variant_score_margin,
+            "nightlord_region": (
+                search_left + match_x,
+                search_top + match_y,
+                search_left + match_x + match_width,
+                search_top + match_y + match_height,
+            ),
         }
 
     def _preparation(self, image: Any) -> dict[str, Any]:
@@ -433,5 +467,12 @@ class RecognitionEngine:
                 self._roi_pixels(self.result_search_roi, width, height),
                 (220, 50, 220),
             )
+            nightlord_region = result.get("nightlord_region")
+            if nightlord_region is not None:
+                self._draw_debug_roi(
+                    annotated,
+                    nightlord_region,
+                    (50, 255, 50),
+                )
 
         return annotated
