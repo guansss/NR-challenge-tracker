@@ -9,6 +9,7 @@ from typing import Any
 from PySide6.QtCore import QDateTime, QUrl, Qt, Signal, QTimer
 from PySide6.QtGui import QDesktopServices, QMouseEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -367,6 +368,9 @@ class TrackerWindow(QMainWindow):
         self._refresh_timer.stop()
         self.monitor.stop()
         event.accept()
+        application = QApplication.instance()
+        if application is not None:
+            application.quit()
 
 
 def _format_session(session: Session, stats: StreakStats) -> str:

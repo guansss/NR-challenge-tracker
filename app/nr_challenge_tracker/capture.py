@@ -7,6 +7,8 @@ from ctypes import wintypes
 import threading
 from typing import Any, Callable
 
+_CAPTURE_STOP_TIMEOUT_SECONDS = 2.0
+
 
 def find_window_by_title(title_part: str) -> tuple[int, str] | None:
     if not title_part.strip():
@@ -105,4 +107,6 @@ class WindowsWindowCapture:
             self._control = None
         if control is not None:
             control.stop()
-            control.wait()
+            waiter = threading.Thread(target=control.wait, daemon=True)
+            waiter.start()
+            waiter.join(timeout=_CAPTURE_STOP_TIMEOUT_SECONDS)

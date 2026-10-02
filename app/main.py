@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import signal
 import sys
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app.nr_challenge_tracker.api import StreakApiServer
@@ -23,6 +25,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     application = QApplication(sys.argv)
     application.setApplicationName("Nightreign Challenge Tracker")
+    signal.signal(signal.SIGINT, lambda *_: application.quit())
+    interrupt_timer = QTimer(application)
+    interrupt_timer.timeout.connect(lambda: None)
+    interrupt_timer.start(250)
     try:
         project_config, settings = load_project_settings(ROOT)
         engine = RecognitionEngine(ROOT, project_config)
