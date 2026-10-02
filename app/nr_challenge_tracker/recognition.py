@@ -35,6 +35,9 @@ class RecognitionEngine:
 
         thresholds = recognition.get("thresholds", {})
         self.min_template_score = thresholds.get("template_score", 0.50)
+        self.min_nightfarer_marker_score = thresholds.get(
+            "nightfarer_marker_template_score", 0.50
+        )
         self.min_result_template_score = thresholds.get(
             "result_template_score", 0.56
         )
@@ -365,7 +368,7 @@ class RecognitionEngine:
         selection_margin = selection_score - marker_scores[1][1]
         nightfarer = (
             selected
-            if selection_score >= self.min_template_score
+            if selection_score >= self.min_nightfarer_marker_score
             and selection_margin >= self.min_identity_margin
             else None
         )

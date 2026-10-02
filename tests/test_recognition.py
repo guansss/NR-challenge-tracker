@@ -10,6 +10,36 @@ from tools.project_config import load_config
 
 
 class RecognitionScreenTests(unittest.TestCase):
+    def test_nightfarer_marker_uses_its_configured_score_threshold(self) -> None:
+        engine = object.__new__(RecognitionEngine)
+        engine.preparation_roi = (0.0, 0.0, 1.0, 1.0)
+        engine.preparation_templates = [("nightlord-a", None), ("nightlord-b", None)]
+        marker = np.zeros((2, 2, 3), dtype=np.uint8)
+        engine.templates = {"marker:hidden": marker, "marker:selected": marker}
+        engine.nightfarer_templates = [("executor", None), ("guardian", None)]
+        engine.grid_x = (0, 2, 4, 6, 8)
+        engine.grid_y = (0, 2)
+        engine.selection_marker_box = (0, 0, 2, 2)
+        engine.reference_width = 10
+        engine.reference_height = 10
+        engine.min_template_score = 0.9
+        engine.min_nightfarer_marker_score = 0.5
+        engine.min_identity_margin = 0.04
+        image = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        with (
+            patch.object(engine, "_normalized_crop", return_value=image),
+            patch.object(engine, "_template_for_frame", return_value=marker),
+            patch.object(
+                engine,
+                "_normalized_match",
+                side_effect=[0.8, 0.1, 0.1, 0.6, 0.2],
+            ),
+        ):
+            result = engine._preparation(image)
+
+        self.assertEqual(result["nightfarer"], "executor")
+
     def test_ambiguous_progress_does_not_end_active_session_as_result(self) -> None:
         engine = object.__new__(RecognitionEngine)
         progress = {"day": "unknown", "day_confidence": 0.95}

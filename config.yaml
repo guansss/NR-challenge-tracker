@@ -24,6 +24,7 @@ recognition:
     result_ms: 200
   thresholds:
     template_score: 0.9
+    nightfarer_marker_template_score: 0.5
     result_template_score: 0.75
     identity_margin: 0.04
     variant_score_margin: 0.004
