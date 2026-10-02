@@ -51,7 +51,7 @@ bilibili:
 
 hud:
   enabled: true
-  opacity: 0.90
+  opacity: 0.10
   font_size: 14
   width: 420
   show_recent_sessions: true

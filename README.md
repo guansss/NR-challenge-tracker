@@ -15,6 +15,8 @@ The application captures only a visible window whose title contains `capture.tar
 
 Session history is stored in `history.yaml` at the project root. Desired-title revision and sync status are stored in the adjacent `title-state.json`. Both generated runtime data files are ignored by Git.
 
+Accepted preparation and result screens are also saved as annotated PNGs under `debug/screenshots/`. Filenames include the 1-based attempt number and recognized identity; an existing file for the same identity is left unchanged.
+
 ## Configuration
 
 Edit `config.yaml` to tune recognition ROIs and sampling intervals. The supplied coordinates and confidence thresholds are initial values calibrated against the included 2560x1440 screenshot set. The app validates runtime settings and binds the local API only to a loopback address.

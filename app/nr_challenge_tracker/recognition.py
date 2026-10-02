@@ -352,3 +352,83 @@ class RecognitionEngine:
             result = self._result_nightlord(image)
             return {"screen": "result", **progress, **result}
         return self._preparation(image)
+
+    @staticmethod
+    def _roi_pixels(
+        box: tuple[float, float, float, float], width: int, height: int
+    ) -> tuple[int, int, int, int]:
+        x, y, box_width, box_height = box
+        return (
+            round(x * width),
+            round(y * height),
+            round((x + box_width) * width),
+            round((y + box_height) * height),
+        )
+
+    @staticmethod
+    def _draw_debug_roi(
+        image: Any,
+        box: tuple[int, int, int, int],
+        color: tuple[int, int, int],
+    ) -> None:
+        left, top, right, bottom = box
+        cv2.rectangle(
+            image,
+            (left, top),
+            (right - 1, bottom - 1),
+            color,
+            max(2, round(min(image.shape[1], image.shape[0]) / 500)),
+        )
+
+    def render_debug_image(self, image: Any, result: dict[str, Any]) -> Any:
+        """Return a frame copy with the recognized screen's input ROIs outlined."""
+        annotated = image.copy()
+        height, width = annotated.shape[:2]
+        screen = result.get("screen")
+
+        if screen == "preparation":
+            self._draw_debug_roi(
+                annotated,
+                self._roi_pixels(self.preparation_roi, width, height),
+                (70, 220, 70),
+            )
+            nightfarer_id = result.get("nightfarer")
+            marker_index = next(
+                (
+                    index
+                    for index, (identifier, _) in enumerate(self.nightfarer_templates)
+                    if identifier == nightfarer_id
+                ),
+                None,
+            )
+            if marker_index is not None:
+                marker = self._template_for_frame(
+                    "marker:selected", annotated, self.templates["marker:selected"]
+                )
+                column = marker_index % 5
+                row = marker_index // 5
+                tile_left = round(
+                    self.grid_x[column] * width / self.reference_width
+                )
+                tile_top = round(self.grid_y[row] * height / self.reference_height)
+                marker_x, marker_y, _, _ = self.selection_marker_box
+                left = tile_left + round(marker_x * width / self.reference_width)
+                top = tile_top + round(marker_y * height / self.reference_height)
+                self._draw_debug_roi(
+                    annotated,
+                    (left, top, left + marker.shape[1], top + marker.shape[0]),
+                    (220, 180, 30),
+                )
+        elif screen == "result":
+            self._draw_debug_roi(
+                annotated,
+                self._roi_pixels(self.progress_roi, width, height),
+                (0, 210, 255),
+            )
+            self._draw_debug_roi(
+                annotated,
+                self._roi_pixels(self.result_search_roi, width, height),
+                (220, 50, 220),
+            )
+
+        return annotated

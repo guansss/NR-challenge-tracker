@@ -1,9 +1,12 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
 
+import numpy as np
+
 from app.nr_challenge_tracker.history import HistoryRepository
+from app.nr_challenge_tracker.models import NightlordVariant, Progress
 from app.nr_challenge_tracker.monitor import RecognitionMonitor, ScreenDebouncer
 from app.nr_challenge_tracker.sessions import SessionService
 
@@ -25,6 +28,9 @@ class FakeRecognitionEngine:
 
     def recognize(self, image: object) -> dict[str, str]:
         return next(self.results)
+
+    def render_debug_image(self, image: object, result: dict[str, str]) -> object:
+        return image.copy()
 
 
 class ScreenDebouncerTests(unittest.TestCase):
@@ -95,6 +101,127 @@ class PreparationMonitorTests(unittest.TestCase):
             monitor._process(None)
 
             self.assertFalse(monitor._preparation_active)
+
+
+class DebugScreenshotMonitorTests(unittest.TestCase):
+    def test_preparation_saves_after_confirmation_and_keeps_each_identity(self) -> None:
+        results = [
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "wylder", "nightlord": "libra"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            debug_dir = root / "debug" / "screenshots"
+            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+                debug_dir=debug_dir,
+            )
+
+            monitor._process(np.full((60, 100, 3), 1, dtype=np.uint8))
+            self.assertFalse(debug_dir.exists())
+            monitor._process(np.full((60, 100, 3), 2, dtype=np.uint8))
+
+            first_path = debug_dir / "0001_preparation_executor_adel.png"
+            self.assertTrue(first_path.is_file())
+            original_contents = first_path.read_bytes()
+            monitor._process(np.full((60, 100, 3), 3, dtype=np.uint8))
+
+            second_path = debug_dir / "0001_preparation_wylder_libra.png"
+            self.assertTrue(second_path.is_file())
+            self.assertNotEqual(first_path, second_path)
+            self.assertEqual(first_path.read_bytes(), original_contents)
+            self.assertEqual(len(list(debug_dir.glob("*.png"))), 2)
+            second_contents = second_path.read_bytes()
+
+            monitor._save_debug_screenshot(
+                np.full((60, 100, 3), 9, dtype=np.uint8),
+                results[-1],
+                sessions.snapshot.sessions[-1],
+            )
+            self.assertEqual(second_path.read_bytes(), second_contents)
+
+    def test_result_uses_all_attempt_history_ordinal_and_skips_duplicate(self) -> None:
+        result = {
+            "screen": "result",
+            "nightlord": "libra",
+            "variant": "everdark",
+            "outcome": "day_3_victory",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            start = datetime.now(timezone.utc) - timedelta(seconds=10)
+            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            previous = sessions.start_session(
+                nightfarer="Executor",
+                nightlord_name="Adel",
+                hidden_nightlord=False,
+                started_at=start,
+            )
+            sessions.finalize_result(
+                previous.id,
+                progress=Progress.DAY_1,
+                ended_at=start + timedelta(seconds=1),
+                nightlord_name="Adel",
+                variant=NightlordVariant.NORMAL,
+            )
+            active = sessions.start_session(
+                nightfarer="Executor",
+                nightlord_name="Libra",
+                hidden_nightlord=False,
+                started_at=start + timedelta(seconds=2),
+            )
+            debug_dir = root / "debug" / "screenshots"
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine([result, result]),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+                debug_dir=debug_dir,
+            )
+
+            monitor._process(np.full((60, 100, 3), 4, dtype=np.uint8))
+            self.assertFalse(debug_dir.exists())
+            monitor._process(np.full((60, 100, 3), 5, dtype=np.uint8))
+
+            screenshot = debug_dir / "0002_result_libra_everdark_day_3_victory.png"
+            self.assertTrue(screenshot.is_file())
+            original_contents = screenshot.read_bytes()
+            monitor._save_debug_screenshot(
+                np.full((60, 100, 3), 9, dtype=np.uint8),
+                result,
+                sessions.snapshot.sessions[-1],
+            )
+            self.assertEqual(screenshot.read_bytes(), original_contents)
+            self.assertEqual(sessions.snapshot.sessions[-1].id, active.id)
+
+    def test_debug_write_failure_does_not_stop_monitor_processing(self) -> None:
+        result = {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            blocked_path = root / "not-a-directory"
+            blocked_path.write_text("blocked", encoding="utf-8")
+            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine([result, result]),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+                debug_dir=blocked_path,
+            )
+
+            monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))
+            monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))
+
+            self.assertEqual(len(sessions.snapshot.sessions), 1)
+            self.assertTrue(monitor.status.startswith("Debug screenshot error:"))
 
 
 if __name__ == "__main__":

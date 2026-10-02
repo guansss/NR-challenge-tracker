@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timezone
+from pathlib import Path
 from queue import Empty, Full, Queue
+import re
 import threading
 import time
 from typing import Any
+
+import cv2
 
 from .capture import WindowsWindowCapture, find_window_by_title, window_is_capturable
 from .models import NightlordVariant, Progress, Session, SessionStatus
@@ -58,6 +62,7 @@ class RecognitionMonitor:
         gameplay_interval_ms: int = 1000,
         result_interval_ms: int = 200,
         confirmations: int = 3,
+        debug_dir: Path | None = None,
     ) -> None:
         self.engine = engine
         self.sessions = sessions
@@ -90,6 +95,15 @@ class RecognitionMonitor:
             for entry in engine.manifest["nightlords"]
         }
         self._preparation_active = False
+        engine_root = getattr(engine, "root", None)
+        self.debug_dir = (
+            Path(debug_dir)
+            if debug_dir is not None
+            else Path(engine_root) / "debug" / "screenshots"
+            if engine_root is not None
+            else None
+        )
+        self._debug_saved_paths: set[Path] = set()
 
     @property
     def status(self) -> str:
@@ -252,28 +266,37 @@ class RecognitionMonitor:
                 result.get("variant"),
                 result.get("outcome"),
             )
+        recognized_session = None
         if screen == "preparation":
             if self._preparation_active:
-                self._handle_preparation(result)
+                recognized_session = self._handle_preparation(result)
             elif self.debouncer.observe(screen) == "preparation":
                 self._preparation_active = True
-                self._handle_preparation(result)
+                recognized_session = self._handle_preparation(result)
         else:
             self._preparation_active = False
             if self.debouncer.observe(screen, identity) == "result":
-                self._handle_result(result)
-        self._publish(self.status, result)
+                recognized_session = self._handle_result(result)
+        debug_error = (
+            self._save_debug_screenshot(image, result, recognized_session)
+            if recognized_session is not None
+            else None
+        )
+        self._publish(
+            f"Debug screenshot error: {debug_error}" if debug_error else self.status,
+            result,
+        )
 
     def _reset_screen_state(self) -> None:
         self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
         self._preparation_active = False
 
-    def _handle_preparation(self, result: dict[str, Any]) -> None:
+    def _handle_preparation(self, result: dict[str, Any]) -> Session | None:
         nightfarer_id = result.get("nightfarer")
         nightlord_id = result.get("nightlord")
         hidden = nightlord_id == "hidden"
         if not nightfarer_id or (not hidden and not nightlord_id):
-            return
+            return None
         pending = next(
             (
                 session
@@ -292,9 +315,9 @@ class RecognitionMonitor:
                 == (self._nightlord_names.get(nightlord_id, nightlord_id) or "").casefold()
             )
             if pending.status is SessionStatus.INTERRUPTED and same_character and same_nightlord:
-                self.sessions.resume_interrupted(pending.id)
+                return self.sessions.resume_interrupted(pending.id)
             elif pending.status is not SessionStatus.INTERRUPTED:
-                self.sessions.update_preparation(
+                return self.sessions.update_preparation(
                     pending.id,
                     nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),
                     nightlord_name=(
@@ -304,8 +327,8 @@ class RecognitionMonitor:
                     ),
                     hidden_nightlord=hidden,
                 )
-            return
-        self.sessions.start_session(
+            return None
+        session = self.sessions.start_session(
             nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),
             nightlord_name=(
                 None if hidden else self._nightlord_names.get(nightlord_id, nightlord_id)
@@ -314,8 +337,9 @@ class RecognitionMonitor:
             started_at=datetime.now().astimezone(),
         )
         self._publish("Session started", result)
+        return session
 
-    def _handle_result(self, result: dict[str, Any]) -> None:
+    def _handle_result(self, result: dict[str, Any]) -> Session | None:
         session = next(
             (
                 entry
@@ -325,10 +349,10 @@ class RecognitionMonitor:
             None,
         )
         if session is None:
-            return
+            return None
         progress = _progress_from_value(result.get("outcome"))
         nightlord_id = result.get("nightlord")
-        self.sessions.finalize_result(
+        finalized = self.sessions.finalize_result(
             session.id,
             progress=progress,
             ended_at=datetime.now(timezone.utc).astimezone(),
@@ -340,6 +364,75 @@ class RecognitionMonitor:
             variant=_variant_from_value(result.get("variant")),
         )
         self._publish("Result recorded", result)
+        return finalized
+
+    def _save_debug_screenshot(
+        self, image: Any, result: dict[str, Any], session: Session
+    ) -> str | None:
+        if image is None or self.debug_dir is None:
+            return None
+        screen = result.get("screen")
+        if screen == "preparation":
+            identity = (
+                result.get("nightfarer"),
+                result.get("nightlord"),
+            )
+        elif screen == "result":
+            identity = (
+                result.get("nightlord"),
+                result.get("variant"),
+                result.get("outcome"),
+            )
+        else:
+            return None
+
+        session_number = self._session_ordinal(session.id)
+        if session_number is None:
+            return None
+        identity_text = "_".join(
+            self._filename_part(value) for value in identity
+        )
+        path = self.debug_dir / f"{session_number:04d}_{screen}_{identity_text}.png"
+        if path in self._debug_saved_paths:
+            return None
+
+        created_path = False
+        try:
+            self.debug_dir.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                self._debug_saved_paths.add(path)
+                return None
+            annotated = self.engine.render_debug_image(image, result)
+            encoded, buffer = cv2.imencode(".png", annotated)
+            if not encoded:
+                return "Could not encode the annotated frame"
+            try:
+                with path.open("xb") as screenshot_file:
+                    created_path = True
+                    screenshot_file.write(buffer.tobytes())
+            except FileExistsError:
+                self._debug_saved_paths.add(path)
+                return None
+            self._debug_saved_paths.add(path)
+        except Exception as error:
+            if created_path:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            return str(error)
+        return None
+
+    def _session_ordinal(self, session_id: str) -> int | None:
+        for ordinal, session in enumerate(self.sessions.snapshot.sessions, start=1):
+            if session.id == session_id:
+                return ordinal
+        return None
+
+    @staticmethod
+    def _filename_part(value: Any) -> str:
+        normalized = re.sub(r"[^a-z0-9_-]+", "-", str(value or "unknown").casefold())
+        return normalized.strip("-_") or "unknown"
 
     def _capture_closed(self) -> None:
         self._capture_ended.set()
