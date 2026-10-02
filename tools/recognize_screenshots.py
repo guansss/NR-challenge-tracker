@@ -10,12 +10,13 @@ from typing import Any
 import cv2
 import yaml
 
-if __package__:
-    from .project_config import load_config
-else:
-    from project_config import load_config
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.nr_challenge_tracker.recognition import RecognitionEngine
+from tools.project_config import load_config
+
 CONFIG = load_config(ROOT)
 PATHS = CONFIG["paths"]
 RECOGNITION_CONFIG = CONFIG["recognition"]
@@ -34,8 +35,7 @@ SELECTION_MARKER_IN_TILE = tuple(RECOGNITION_CONFIG["selection_marker_in_tile"])
 REFERENCE_WIDTH, REFERENCE_HEIGHT = RECOGNITION_CONFIG["source_dimensions"]
 MIN_TEMPLATE_SCORE = 0.50
 MIN_IDENTITY_MARGIN = 0.04
-MIN_VARIANT_MARGIN = 0.08
-MAX_VARIANT_DISTANCE = 0.15
+MIN_VARIANT_SCORE_MARGIN = 0.004
 MIN_PROGRESS_MARGIN = 0.015
 MIN_VICTORY_MARGIN = 0.015
 
@@ -114,16 +114,6 @@ def best_match(region: Any, template: Any) -> tuple[float, Any]:
     _, score, _, point = cv2.minMaxLoc(scores)
     x, y = point
     return float(score), region[y : y + template.shape[0], x : x + template.shape[1]]
-
-
-def purple_ratio(image: Any) -> float:
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    purple_pixels = (
-        (hsv[:, :, 0] >= 115)
-        & (hsv[:, :, 0] <= 170)
-        & (hsv[:, :, 1] >= 45)
-    )
-    return float(purple_pixels.mean())
 
 
 def result_progress(
@@ -214,17 +204,23 @@ def result_nightlord(
             template = resize_template_for_frame(
                 read_image(asset_path(path)), image, manifest
             )
-            score, matched_crop = best_match(region, template)
-            scores.append((variant, score, matched_crop, template))
+            score, _matched_crop = best_match(region, template)
+            scores.append((variant, score, None, template))
         if scores:
-            variant, score, matched_crop, _ = max(scores, key=lambda entry: entry[1])
+            ranked_variants = sorted(
+                scores, key=lambda entry: entry[1], reverse=True
+            )
+            variant, score, _, _ = ranked_variants[0]
             candidates.append(
                 {
                     "id": nightlord["id"],
                     "variant": variant,
                     "score": score,
-                    "crop": matched_crop,
-                    "templates": {entry[0]: entry[3] for entry in scores},
+                    "variant_score_margin": (
+                        score - ranked_variants[1][1]
+                        if len(ranked_variants) > 1
+                        else 1.0
+                    ),
                 }
             )
 
@@ -242,28 +238,17 @@ def result_nightlord(
             "identity_margin": margin,
         }
 
-    references = best["templates"]
-    if "normal" in references and "everdark" in references:
-        observed_ratio = purple_ratio(best["crop"])
-        variant_distances = {
-            name: abs(observed_ratio - purple_ratio(reference))
-            for name, reference in references.items()
-        }
-        ranked_variants = sorted(
-            variant_distances.items(), key=lambda entry: entry[1]
-        )
-        variant, nearest_distance = ranked_variants[0]
-        variant_margin = ranked_variants[1][1] - nearest_distance
-        if nearest_distance > MAX_VARIANT_DISTANCE or variant_margin < MIN_VARIANT_MARGIN:
-            variant = "unknown"
-    else:
-        variant = "normal"
+    variant = best["variant"]
+    variant_score_margin = best["variant_score_margin"]
+    if variant_score_margin < MIN_VARIANT_SCORE_MARGIN:
+        variant = "unknown"
 
     return {
         "nightlord": best["id"],
         "variant": variant,
         "confidence": best["score"],
         "identity_margin": margin,
+        "variant_score_margin": variant_score_margin,
     }
 
 
@@ -369,7 +354,9 @@ def result_screenshots() -> list[Path]:
 
 
 def run_dataset(
-    manifest: dict[str, Any], resolution: tuple[int, int] | None
+    manifest: dict[str, Any],
+    resolution: tuple[int, int] | None,
+    engine: RecognitionEngine,
 ) -> int:
     totals: dict[str, dict[str, list[int]]] = {}
 
@@ -384,7 +371,7 @@ def run_dataset(
         image = read_image(path)
         if resolution is not None:
             image = cv2.resize(image, resolution, interpolation=cv2.INTER_AREA)
-        result = recognize(image, manifest)
+        result = engine.recognize(image)
         record("preparation", "screen", result["screen"], "preparation")
         for field, expected_value in expected.items():
             actual = result.get(field) or "unknown"
@@ -402,7 +389,7 @@ def run_dataset(
         image = read_image(path)
         if resolution is not None:
             image = cv2.resize(image, resolution, interpolation=cv2.INTER_AREA)
-        result = recognize(image, manifest)
+        result = engine.recognize(image)
         record(path.parent.name, "screen", result["screen"], "result")
         all_correct = all_correct and result["screen"] == "result"
         values = []
@@ -462,13 +449,14 @@ def main() -> int:
 
     try:
         manifest = load_manifest()
+        engine = RecognitionEngine(ROOT, CONFIG, manifest)
         if args.dataset:
-            return run_dataset(manifest, args.resolution)
+            return run_dataset(manifest, args.resolution, engine)
         if not args.images:
             parser.error("Provide screenshot paths or use --dataset")
         for path in args.images:
             image = read_image(path if path.is_absolute() else ROOT / path)
-            print(f"{path}: {recognize(image, manifest)}")
+            print(f"{path}: {engine.recognize(image)}")
     except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as error:
         print(f"Recognition failed: {error}", file=sys.stderr)
         return 1

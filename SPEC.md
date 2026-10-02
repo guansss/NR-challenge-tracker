@@ -324,7 +324,7 @@ The recognition engine shall:
 1. Locate the relevant panel or search region.
 2. Detect the Nightlord icon within that region.
 3. Match the icon to the catalog of 10 base Nightlords.
-4. Determine the variant from the icon's appearance.
+4. Determine the variant by matching against the available normal and Everdark result-icon templates.
 5. Reconcile the detected identity with the base identity recorded at session start, if one was known. A hidden-Nightlord marker at session start is not an identity conflict; record the result-screen identity as the actual Nightlord.
 
 The implementation shall not assume a fixed vertical coordinate for the icon.
@@ -333,35 +333,18 @@ If the result-screen identity conflicts with the preparation-screen identity, th
 
 ### 6.6 Everdark variant recognition
 
-Eight of the 10 Nightlords have Everdark variants. An Everdark icon is visually similar to the corresponding normal icon but is tinted purple.
+Eight of the 10 Nightlords have Everdark variants, and the template catalog contains separate result-screen icons for the normal and available Everdark variants.
 
-The variant classifier shall support:
-
-- `normal`
-- `everdark`
-- `unknown`
-
-The intended algorithm is a two-stage classifier:
-
-Stage A — Base identity
-
-Match the icon against the 10 base Nightlord templates.
-
-Stage B — Variant
-
-Compare the icon's color characteristics against calibrated normal and Everdark references.
-
-The initial implementation should evaluate HSV or Lab color-space features, with a mask that excludes as much of the surrounding background as practical. The final method may use another OpenCV technique if testing demonstrates better reliability.
+The result-screen classifier shall compare the located icon directly against the catalog's normal and Everdark templates. For each Nightlord, it shall select the variant with the higher template-match score, then validate that score and the margin over the alternate variant using configurable thresholds.
 
 The classifier shall:
 
-- Distinguish purple tint from ordinary background and UI colors.
-- Avoid relying exclusively on a raw RGB threshold.
-- Use configurable confidence thresholds.
-- Return `unknown` if the icon is too small, obscured, or ambiguous.
-- Enforce the catalog rule that the Nightlord without an Everdark variant cannot be classified as Everdark.
+- Support `normal`, `everdark`, and `unknown` results.
+- Return `unknown` if the identity score is too low or the normal/Everdark score margin is ambiguous.
+- Enforce the catalog rule that a Nightlord without an Everdark template cannot be classified as Everdark.
+- Keep base-identity confidence and variant-score margin available for diagnostics.
 
-The classifier should initially be tested across multiple Nightlords to determine whether a shared tint classifier is sufficient or whether per-Nightlord calibration is required.
+Variant recognition shall use the existing variant-specific icon templates; no separate color-tint classifier is required.
 
 ### 6.7 Recognition catalogs
 
@@ -373,9 +356,9 @@ Each catalog entry should support:
 
 - Stable identifier.
 - Display name.
-- Normal icon template.
-- Everdark availability.
-- Optional variant-specific templates or thresholds.
+- Normal result-icon template.
+- Everdark availability and result-icon template when one exists.
+- Optional per-variant confidence thresholds.
 
 The exact catalog and Nightfarer names shall be validated against the game's current roster before release.
 
@@ -584,7 +567,7 @@ For a target of 100, the title template shall therefore render the capped challe
 
 The application shall store structured session history in a local YAML file.
 
-The file should reside in an application-specific directory under the Windows user's local application data directory. It shall not be stored in the game installation directory.
+The history file shall reside at the project root beside `config.yaml`, not in the game installation directory or the Windows user's application-data directory. Desired-title revision and synchronization status shall be persisted in a separate project-root `title-state.json` file.
 
 The repository shall:
 
@@ -1103,7 +1086,7 @@ The architecture and behavioral requirements are sufficiently specified to begin
 1. Recognition templates: obtain representative screenshots for every Nightfarer, every base Nightlord, and the available Everdark variants.
 2. ROI calibration: finalize normalized coordinates from actual captures at 16:9 resolutions.
 3. Capture compatibility: verify the chosen Windows capture API with Nightreign's actual display mode.
-4. Everdark classifier: determine whether one shared purple-tint classifier works reliably for all eight variants.
+4. Variant template scoring: validate direct normal/Everdark template-match margins across available variants and add real captures where the scores are ambiguous.
 5. Bilibili API: verify the live-room update endpoint, authentication requirements, CSRF behavior, response schema, and current title-length limit.
 6. Manual resolution: implement the correction workflow for interrupted or uncertain sessions, including how the user explicitly resolves an Executor session whose outcome cannot be recovered.
 7. Performance baseline: establish measurable CPU, memory, and frame-rate overhead targets after profiling the initial prototype.

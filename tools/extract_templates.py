@@ -10,12 +10,12 @@ from typing import Any
 import cv2
 import yaml
 
-if __package__:
-    from .project_config import load_config
-else:
-    from project_config import load_config
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.project_config import load_config
+
 CONFIG = load_config(ROOT)
 PATHS = CONFIG["paths"]
 RECOGNITION_CONFIG = CONFIG["recognition"]
