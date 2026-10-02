@@ -12,7 +12,7 @@ recognition:
   source_dimensions: [2560, 1440]
   preparation_nightlord_roi: [0.051, 0.039, 0.042, 0.07]
   result_progress_roi: [0.692, 0.164, 0.263, 0.043]
-  result_nightlord_search_roi: [0.0, 0.50, 0.40, 0.48]
+  result_nightlord_search_roi: [0.10, 0.68, 0.11, 0.18]
   nightfarer_grid_x: [120, 259, 398, 536, 675]
   nightfarer_grid_y: [389, 529]
   selection_marker_in_tile: [2, 2, 44, 44]
