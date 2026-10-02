@@ -1,9 +1,12 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import cv2
 import numpy as np
 
 from app.nr_challenge_tracker.recognition import RecognitionEngine
+from tools.project_config import load_config
 
 
 class RecognitionScreenTests(unittest.TestCase):
@@ -21,6 +24,50 @@ class RecognitionScreenTests(unittest.TestCase):
 
         self.assertEqual(recognized, preparation)
         result_nightlord.assert_not_called()
+
+
+class RecognitionNightlordTests(unittest.TestCase):
+    def test_result_identity_below_result_threshold_is_rejected(self) -> None:
+        engine = object.__new__(RecognitionEngine)
+        engine.result_search_roi = (0.0, 0.0, 1.0, 1.0)
+        engine.result_templates = {"straghess": {"normal": np.zeros((2, 2, 3))}}
+        engine.min_result_template_score = 0.56
+        engine.min_identity_margin = 0.04
+        engine.min_variant_score_margin = 0.004
+        image = np.zeros((10, 10, 3))
+
+        with (
+            patch.object(engine, "_normalized_crop", return_value=image),
+            patch.object(engine, "_template_for_frame", return_value=image),
+            patch.object(RecognitionEngine, "_best_match", return_value=(0.554, image)),
+        ):
+            result = engine._result_nightlord(image)
+
+        self.assertIsNone(result["nightlord"])
+        self.assertEqual(result["variant"], "unknown")
+
+
+class RecognitionCounterexampleTests(unittest.TestCase):
+    def test_gameplay_screenshot_is_not_mislabeled_as_straghess_result(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        image_path = (
+            root
+            / "assets"
+            / "dataset"
+            / "counterexamples"
+            / "0003_result_straghess_normal_unknown.jpg"
+        )
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        if image is None:
+            self.fail(f"Could not load counterexample image: {image_path}")
+
+        engine = RecognitionEngine(root, load_config(root))
+        identity = engine._result_nightlord(image)
+        recognized = engine.recognize(image)
+
+        self.assertIsNone(identity["nightlord"])
+        self.assertEqual(recognized["screen"], "unknown")
+        self.assertIsNone(recognized.get("nightlord"))
 
 
 class RecognitionDebugImageTests(unittest.TestCase):

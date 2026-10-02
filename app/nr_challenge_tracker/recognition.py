@@ -35,6 +35,9 @@ class RecognitionEngine:
 
         thresholds = recognition.get("thresholds", {})
         self.min_template_score = thresholds.get("template_score", 0.50)
+        self.min_result_template_score = thresholds.get(
+            "result_template_score", 0.56
+        )
         self.min_identity_margin = thresholds.get("identity_margin", 0.04)
         self.min_variant_score_margin = thresholds.get("variant_score_margin", 0.004)
         self.min_progress_margin = thresholds.get("progress_margin", 0.015)
@@ -262,7 +265,7 @@ class RecognitionEngine:
             candidates[1]["score"] if len(candidates) > 1 else 0.0
         )
         if (
-            best["score"] < self.min_template_score
+            best["score"] < self.min_result_template_score
             or margin < self.min_identity_margin
         ):
             return {

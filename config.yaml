@@ -23,7 +23,8 @@ recognition:
     gameplay_ms: 1000
     result_ms: 200
   thresholds:
-    template_score: 0.50
+    template_score: 0.9
+    result_template_score: 0.75
     identity_margin: 0.04
     variant_score_margin: 0.004
     progress_margin: 0.015
