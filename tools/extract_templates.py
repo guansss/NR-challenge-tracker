@@ -10,12 +10,20 @@ from typing import Any
 import cv2
 import yaml
 
+if __package__:
+    from .project_config import load_config
+else:
+    from project_config import load_config
+
 ROOT = Path(__file__).resolve().parents[1]
-PREPARATION_DIR = ROOT / "assets" / "dataset" / "preparation-screens"
-RESULT_DIR = ROOT / "assets" / "dataset" / "result-screens"
-OUTPUT_DIR = ROOT / "assets" / "templates"
-MANIFEST_PATH = OUTPUT_DIR / "manifest.yaml"
-CONTACT_SHEET_PATH = OUTPUT_DIR / "contact_sheet.png"
+CONFIG = load_config(ROOT)
+PATHS = CONFIG["paths"]
+RECOGNITION_CONFIG = CONFIG["recognition"]
+PREPARATION_DIR = ROOT / PATHS["preparation_screens"]
+RESULT_DIR = ROOT / PATHS["result_screens"]
+OUTPUT_DIR = ROOT / PATHS["templates"]
+MANIFEST_PATH = ROOT / PATHS["template_manifest"]
+CONTACT_SHEET_PATH = ROOT / PATHS["contact_sheet"]
 
 NIGHTFARERS = (
     ("wylder", "Wylder"),
@@ -45,17 +53,16 @@ NIGHTLORD_NAMES = {
 
 # Normalized to the supplied 16:9 screenshots. The portrait grid uses its
 # measured 2560x1440 cell positions, scaled to each source image's dimensions.
-PREPARATION_NIGHTLORD_ROI = (0.051, 0.039, 0.042, 0.07)
 RESULT_NIGHTLORD_ROI = (0.13, 0.77, 0.03, 0.055)
-RESULT_PROGRESS_ROI = (0.692, 0.164, 0.263, 0.043)
-GRID_X = (120, 259, 398, 536, 675)
-GRID_Y = (389, 529)
+PREPARATION_NIGHTLORD_ROI = tuple(RECOGNITION_CONFIG["preparation_nightlord_roi"])
+RESULT_PROGRESS_ROI = tuple(RECOGNITION_CONFIG["result_progress_roi"])
+GRID_X = tuple(RECOGNITION_CONFIG["nightfarer_grid_x"])
+GRID_Y = tuple(RECOGNITION_CONFIG["nightfarer_grid_y"])
 GRID_WIDTH = 134
 GRID_HEIGHT = 134
 GRID_MARGIN = 25
-SELECTION_MARKER_IN_TILE = (2, 2, 44, 44)
-REFERENCE_WIDTH = 2560
-REFERENCE_HEIGHT = 1440
+SELECTION_MARKER_IN_TILE = tuple(RECOGNITION_CONFIG["selection_marker_in_tile"])
+REFERENCE_WIDTH, REFERENCE_HEIGHT = RECOGNITION_CONFIG["source_dimensions"]
 
 
 def require(condition: bool, message: str) -> None:
