@@ -1,0 +1,1089 @@
+schema_version: 1
+source_dimensions:
+- 2560
+- 1440
+source_aspect_ratio: '16:9'
+nightfarers:
+- id: wylder
+  display_name: Wylder
+  portrait_template: assets/templates/nightfarers/wylder.png
+- id: guardian
+  display_name: Guardian
+  portrait_template: assets/templates/nightfarers/guardian.png
+- id: ironeye
+  display_name: Ironeye
+  portrait_template: assets/templates/nightfarers/ironeye.png
+- id: duchess
+  display_name: Duchess
+  portrait_template: assets/templates/nightfarers/duchess.png
+- id: raider
+  display_name: Raider
+  portrait_template: assets/templates/nightfarers/raider.png
+- id: revenant
+  display_name: Revenant
+  portrait_template: assets/templates/nightfarers/revenant.png
+- id: recluse
+  display_name: Recluse
+  portrait_template: assets/templates/nightfarers/recluse.png
+- id: executor
+  display_name: Executor
+  portrait_template: assets/templates/nightfarers/executor.png
+- id: scholar
+  display_name: Scholar
+  portrait_template: assets/templates/nightfarers/scholar.png
+- id: undertaker
+  display_name: Undertaker
+  portrait_template: assets/templates/nightfarers/undertaker.png
+nightlords:
+- id: adel
+  display_name: Adel
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/adel.png
+    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/adel.png
+    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
+- id: caligo
+  display_name: Caligo
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/caligo.png
+    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/caligo.png
+    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
+- id: fulghor
+  display_name: Fulghor
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/fulghor.png
+    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/fulghor.png
+    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
+- id: gladius
+  display_name: Gladius
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/gladius.png
+    everdark: assets/templates/nightlord_result_icons/gladius-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/gladius.png
+    everdark: assets/templates/nightlord_result_icons/gladius-everdark.png
+- id: gnoster
+  display_name: Gnoster
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/gnoster.png
+    everdark: assets/templates/nightlord_result_icons/gnoster-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/gnoster.png
+    everdark: assets/templates/nightlord_result_icons/gnoster-everdark.png
+- id: harmonia
+  display_name: Harmonia
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/harmonia.png
+    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/harmonia.png
+    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
+- id: heolstor
+  display_name: Heolstor
+  everdark_available_in_dataset: false
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/heolstor.png
+    everdark: null
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/heolstor.png
+    everdark: null
+- id: libra
+  display_name: Libra
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/libra.png
+    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/libra.png
+    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
+- id: maris
+  display_name: Maris
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/maris.png
+    everdark: assets/templates/nightlord_result_icons/maris-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/maris.png
+    everdark: assets/templates/nightlord_result_icons/maris-everdark.png
+- id: straghess
+  display_name: Straghess
+  everdark_available_in_dataset: false
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/straghess.png
+    everdark: null
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/straghess.png
+    everdark: null
+markers:
+  hidden_nightlord: assets/templates/markers/hidden_nightlord.png
+  selected_nightfarer: assets/templates/markers/selected_nightfarer.png
+progress_templates:
+  day_3_victory: assets/templates/result_progress/day_3_victory.png
+  day_1: assets/templates/result_progress/day_1.png
+  day_3: assets/templates/result_progress/day_3.png
+  day_2: assets/templates/result_progress/day_2.png
+result_progress_samples:
+- source: assets/dataset/result-screens/adel-everdark_victory.jpg
+  nightlord_id: adel
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/adel-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/adel_victory.jpg
+  nightlord_id: adel
+  variant: normal
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/adel.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/caligo-everdark_victory.jpg
+  nightlord_id: caligo
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/caligo-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/caligo_day1.jpg
+  nightlord_id: caligo
+  variant: normal
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/caligo.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/fulghor-everdark_victory.jpg
+  nightlord_id: fulghor
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/fulghor-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/fulghor_victory.jpg
+  nightlord_id: fulghor
+  variant: normal
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/fulghor.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/gladius-everdark_victory.jpg
+  nightlord_id: gladius
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/gladius-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/gladius_day1.jpg
+  nightlord_id: gladius
+  variant: normal
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/gladius.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/gnoster-everdark_victory.jpg
+  nightlord_id: gnoster
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/gnoster-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/gnoster_victory.jpg
+  nightlord_id: gnoster
+  variant: normal
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/gnoster.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/harmonia-everdark_victory.jpg
+  nightlord_id: harmonia
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/harmonia-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/harmonia_day1.jpg
+  nightlord_id: harmonia
+  variant: normal
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/harmonia.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/heolstor_day3.jpg
+  nightlord_id: heolstor
+  variant: normal
+  progress_label_from_filename: day_3
+  nightlord_icon_template: assets/templates/nightlord_result_icons/heolstor.png
+  progress_crop: assets/templates/result_progress/day_3.png
+- source: assets/dataset/result-screens/libra-everdark_victory.jpg
+  nightlord_id: libra
+  variant: everdark
+  progress_label_from_filename: day_3_victory
+  nightlord_icon_template: assets/templates/nightlord_result_icons/libra-everdark.png
+  progress_crop: assets/templates/result_progress/day_3_victory.png
+- source: assets/dataset/result-screens/libra_day1.jpg
+  nightlord_id: libra
+  variant: normal
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/libra.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/maris-everdark_day1.jpg
+  nightlord_id: maris
+  variant: everdark
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/maris-everdark.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/maris_day1.jpg
+  nightlord_id: maris
+  variant: normal
+  progress_label_from_filename: day_1
+  nightlord_icon_template: assets/templates/nightlord_result_icons/maris.png
+  progress_crop: assets/templates/result_progress/day_1.png
+- source: assets/dataset/result-screens/straghess_day2.jpg
+  nightlord_id: straghess
+  variant: normal
+  progress_label_from_filename: day_2
+  nightlord_icon_template: assets/templates/nightlord_result_icons/straghess.png
+  progress_crop: assets/templates/result_progress/day_2.png
+notes:
+- Source filenames provide labels; result samples are not a complete outcome matrix.
+- Progress crops are labeled by filename. The crop alone is not asserted to distinguish
+  Day 3 victory from Day 3 without victory.
+- Crop coordinates describe source screenshots and are normalized in addition to pixel
+  coordinates.
+- Normal Nightlord identity references come from preparation screens; Everdark references
+  come from labeled result screens.
+assets:
+- id: nightlord:adel:normal
+  path: assets/templates/nightlord_preparation_icons/adel.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:caligo:normal
+  path: assets/templates/nightlord_preparation_icons/caligo.png
+  source: assets/dataset/preparation-screens/caligo_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:fulghor:normal
+  path: assets/templates/nightlord_preparation_icons/fulghor.png
+  source: assets/dataset/preparation-screens/fulghor_revenant.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:gladius:normal
+  path: assets/templates/nightlord_preparation_icons/gladius.png
+  source: assets/dataset/preparation-screens/gladius_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:gnoster:normal
+  path: assets/templates/nightlord_preparation_icons/gnoster.png
+  source: assets/dataset/preparation-screens/gnoster_duchess.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:harmonia:normal
+  path: assets/templates/nightlord_preparation_icons/harmonia.png
+  source: assets/dataset/preparation-screens/harmonia_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:heolstor:normal
+  path: assets/templates/nightlord_preparation_icons/heolstor.png
+  source: assets/dataset/preparation-screens/heolstor_revenant.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:libra:normal
+  path: assets/templates/nightlord_preparation_icons/libra.png
+  source: assets/dataset/preparation-screens/libra_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:maris:normal
+  path: assets/templates/nightlord_preparation_icons/maris.png
+  source: assets/dataset/preparation-screens/maris_revenant.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightlord:straghess:normal
+  path: assets/templates/nightlord_preparation_icons/straghess.png
+  source: assets/dataset/preparation-screens/straghess_undertaker.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: marker:hidden_nightlord
+  path: assets/templates/markers/hidden_nightlord.png
+  source: assets/dataset/preparation-screens/hidden_executor.jpg
+  source_box_px:
+  - 131
+  - 56
+  - 238
+  - 157
+  source_box_normalized:
+  - 0.051172
+  - 0.038889
+  - 0.041797
+  - 0.070139
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 107
+  - 101
+- id: nightfarer:wylder
+  path: assets/templates/nightfarers/wylder.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 145
+  - 414
+  - 229
+  - 498
+  source_box_normalized:
+  - 0.056641
+  - 0.2875
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:guardian
+  path: assets/templates/nightfarers/guardian.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 284
+  - 414
+  - 368
+  - 498
+  source_box_normalized:
+  - 0.110937
+  - 0.2875
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:ironeye
+  path: assets/templates/nightfarers/ironeye.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 423
+  - 414
+  - 507
+  - 498
+  source_box_normalized:
+  - 0.165234
+  - 0.2875
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:duchess
+  path: assets/templates/nightfarers/duchess.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 561
+  - 414
+  - 645
+  - 498
+  source_box_normalized:
+  - 0.219141
+  - 0.2875
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:raider
+  path: assets/templates/nightfarers/raider.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 700
+  - 414
+  - 784
+  - 498
+  source_box_normalized:
+  - 0.273438
+  - 0.2875
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:revenant
+  path: assets/templates/nightfarers/revenant.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 145
+  - 554
+  - 229
+  - 638
+  source_box_normalized:
+  - 0.056641
+  - 0.384722
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:recluse
+  path: assets/templates/nightfarers/recluse.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 284
+  - 554
+  - 368
+  - 638
+  source_box_normalized:
+  - 0.110937
+  - 0.384722
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:executor
+  path: assets/templates/nightfarers/executor.png
+  source: assets/dataset/preparation-screens/fulghor_revenant.jpg
+  source_box_px:
+  - 423
+  - 554
+  - 507
+  - 638
+  source_box_normalized:
+  - 0.165234
+  - 0.384722
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:scholar
+  path: assets/templates/nightfarers/scholar.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 561
+  - 554
+  - 645
+  - 638
+  source_box_normalized:
+  - 0.219141
+  - 0.384722
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: nightfarer:undertaker
+  path: assets/templates/nightfarers/undertaker.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 700
+  - 554
+  - 784
+  - 638
+  source_box_normalized:
+  - 0.273438
+  - 0.384722
+  - 0.032813
+  - 0.058333
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 84
+  - 84
+- id: marker:selected_nightfarer
+  path: assets/templates/markers/selected_nightfarer.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 400
+  - 531
+  - 444
+  - 575
+  source_box_normalized:
+  - 0.15625
+  - 0.36875
+  - 0.017188
+  - 0.030556
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 44
+  - 44
+- id: result_nightlord:adel:everdark
+  path: assets/templates/nightlord_result_icons/adel-everdark.png
+  source: assets/dataset/result-screens/adel-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_progress:day_3_victory
+  path: assets/templates/result_progress/day_3_victory.png
+  source: assets/dataset/result-screens/adel-everdark_victory.jpg
+  source_box_px:
+  - 1772
+  - 236
+  - 2445
+  - 298
+  source_box_normalized:
+  - 0.692187
+  - 0.163889
+  - 0.262891
+  - 0.043056
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 673
+  - 62
+- id: result_nightlord:adel:normal
+  path: assets/templates/nightlord_result_icons/adel.png
+  source: assets/dataset/result-screens/adel_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:caligo:everdark
+  path: assets/templates/nightlord_result_icons/caligo-everdark.png
+  source: assets/dataset/result-screens/caligo-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:caligo:normal
+  path: assets/templates/nightlord_result_icons/caligo.png
+  source: assets/dataset/result-screens/caligo_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_progress:day_1
+  path: assets/templates/result_progress/day_1.png
+  source: assets/dataset/result-screens/caligo_day1.jpg
+  source_box_px:
+  - 1772
+  - 236
+  - 2445
+  - 298
+  source_box_normalized:
+  - 0.692187
+  - 0.163889
+  - 0.262891
+  - 0.043056
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 673
+  - 62
+- id: result_nightlord:fulghor:everdark
+  path: assets/templates/nightlord_result_icons/fulghor-everdark.png
+  source: assets/dataset/result-screens/fulghor-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:fulghor:normal
+  path: assets/templates/nightlord_result_icons/fulghor.png
+  source: assets/dataset/result-screens/fulghor_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:gladius:everdark
+  path: assets/templates/nightlord_result_icons/gladius-everdark.png
+  source: assets/dataset/result-screens/gladius-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:gladius:normal
+  path: assets/templates/nightlord_result_icons/gladius.png
+  source: assets/dataset/result-screens/gladius_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:gnoster:everdark
+  path: assets/templates/nightlord_result_icons/gnoster-everdark.png
+  source: assets/dataset/result-screens/gnoster-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:gnoster:normal
+  path: assets/templates/nightlord_result_icons/gnoster.png
+  source: assets/dataset/result-screens/gnoster_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:harmonia:everdark
+  path: assets/templates/nightlord_result_icons/harmonia-everdark.png
+  source: assets/dataset/result-screens/harmonia-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:harmonia:normal
+  path: assets/templates/nightlord_result_icons/harmonia.png
+  source: assets/dataset/result-screens/harmonia_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:heolstor:normal
+  path: assets/templates/nightlord_result_icons/heolstor.png
+  source: assets/dataset/result-screens/heolstor_day3.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_progress:day_3
+  path: assets/templates/result_progress/day_3.png
+  source: assets/dataset/result-screens/heolstor_day3.jpg
+  source_box_px:
+  - 1772
+  - 236
+  - 2445
+  - 298
+  source_box_normalized:
+  - 0.692187
+  - 0.163889
+  - 0.262891
+  - 0.043056
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 673
+  - 62
+- id: result_nightlord:libra:everdark
+  path: assets/templates/nightlord_result_icons/libra-everdark.png
+  source: assets/dataset/result-screens/libra-everdark_victory.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:libra:normal
+  path: assets/templates/nightlord_result_icons/libra.png
+  source: assets/dataset/result-screens/libra_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:maris:everdark
+  path: assets/templates/nightlord_result_icons/maris-everdark.png
+  source: assets/dataset/result-screens/maris-everdark_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:maris:normal
+  path: assets/templates/nightlord_result_icons/maris.png
+  source: assets/dataset/result-screens/maris_day1.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_nightlord:straghess:normal
+  path: assets/templates/nightlord_result_icons/straghess.png
+  source: assets/dataset/result-screens/straghess_day2.jpg
+  source_box_px:
+  - 333
+  - 1109
+  - 410
+  - 1188
+  source_box_normalized:
+  - 0.130078
+  - 0.770139
+  - 0.030078
+  - 0.054861
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 77
+  - 79
+- id: result_progress:day_2
+  path: assets/templates/result_progress/day_2.png
+  source: assets/dataset/result-screens/straghess_day2.jpg
+  source_box_px:
+  - 1772
+  - 236
+  - 2445
+  - 298
+  source_box_normalized:
+  - 0.692187
+  - 0.163889
+  - 0.262891
+  - 0.043056
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 673
+  - 62
