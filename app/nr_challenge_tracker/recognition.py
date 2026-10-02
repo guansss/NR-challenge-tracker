@@ -348,7 +348,7 @@ class RecognitionEngine:
 
     def recognize(self, image: Any) -> dict[str, Any]:
         progress = self._result_progress(image)
-        if progress["day_confidence"] >= self.min_template_score:
+        if progress["day"] != "unknown":
             result = self._result_nightlord(image)
             return {"screen": "result", **progress, **result}
         return self._preparation(image)

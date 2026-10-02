@@ -128,6 +128,41 @@ class SessionService:
             status=SessionStatus.ACTIVE,
         )
 
+    def update_preparation(
+        self,
+        session_id: str,
+        *,
+        nightfarer: str,
+        nightlord_name: str | None,
+        hidden_nightlord: bool,
+    ) -> Session:
+        if not isinstance(nightfarer, str) or not nightfarer.strip():
+            raise SessionTransitionError("A confirmed Nightfarer is required")
+        if not hidden_nightlord and not (nightlord_name or "").strip():
+            raise SessionTransitionError(
+                "A Nightlord identity or hidden-Nightlord marker is required"
+            )
+        with self._lock:
+            session = self._find(session_id)
+            if session.status not in {SessionStatus.ACTIVE, SessionStatus.AWAITING_RESULT}:
+                raise SessionTransitionError(
+                    f"Cannot update preparation for a session in state {session.status.value}"
+                )
+            if (
+                session.nightfarer == nightfarer
+                and session.nightlord_name == nightlord_name
+                and session.nightlord_hidden == hidden_nightlord
+            ):
+                return session
+            updated = replace(
+                session,
+                nightfarer=nightfarer,
+                nightlord_name=nightlord_name,
+                nightlord_hidden=hidden_nightlord,
+            )
+            self._replace_and_commit(updated)
+            return updated
+
     def finalize_result(
         self,
         session_id: str,

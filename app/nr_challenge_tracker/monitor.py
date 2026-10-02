@@ -23,12 +23,14 @@ class ScreenDebouncer:
         self._candidate: tuple[str, object] | None = None
         self._count = 0
         self._emitted: str | None = None
+        self._emitted_candidate: tuple[str, object] | None = None
 
     def observe(self, screen: str, identity: object = None) -> str | None:
         if screen not in {"preparation", "result"}:
             self._candidate = None
             self._count = 0
             self._emitted = None
+            self._emitted_candidate = None
             return None
         candidate = (screen, identity)
         if candidate != self._candidate:
@@ -36,9 +38,10 @@ class ScreenDebouncer:
             self._count = 1
         else:
             self._count += 1
-        if self._count < self.confirmations or self._emitted == screen:
+        if self._count < self.confirmations or self._emitted_candidate == candidate:
             return None
         self._emitted = screen
+        self._emitted_candidate = candidate
         return screen
 
 
@@ -86,6 +89,7 @@ class RecognitionMonitor:
             entry["id"]: entry["display_name"]
             for entry in engine.manifest["nightlords"]
         }
+        self._preparation_active = False
 
     @property
     def status(self) -> str:
@@ -105,14 +109,14 @@ class RecognitionMonitor:
     def pause(self) -> None:
         self._paused.set()
         self._drain_frames()
-        self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
+        self._reset_screen_state()
         self._publish("Monitoring paused")
 
     def resume(self) -> None:
         self._paused.clear()
         self._last_sample = 0.0
         self._drain_frames()
-        self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
+        self._reset_screen_state()
         self._publish("Monitoring active")
 
     @property
@@ -146,7 +150,7 @@ class RecognitionMonitor:
                     self._capture_ended.clear()
                     self._capture_error_message = ""
                     self._drain_frames()
-                    self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
+                    self._reset_screen_state()
                     self._capture = WindowsWindowCapture(
                         hwnd,
                         self._accept_frame,
@@ -180,7 +184,7 @@ class RecognitionMonitor:
                         self._window_unavailable = True
                         self._interrupt_active_session()
                         self._drain_frames()
-                        self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
+                        self._reset_screen_state()
                         self._publish("Game window unavailable")
                     self._stop.wait(0.25)
                     continue
@@ -237,25 +241,32 @@ class RecognitionMonitor:
             if screen == "result"
             else self.gameplay_interval_ms
         )
-        if self.debouncer._emitted == screen:
+        if self.debouncer._emitted == screen and screen != "preparation":
             interval = self.idle_interval_ms
         self._sample_interval_ms = interval
 
         identity = None
-        if screen == "preparation":
-            identity = (result.get("nightfarer"), result.get("nightlord"))
-        elif screen == "result":
+        if screen == "result":
             identity = (
                 result.get("nightlord"),
                 result.get("variant"),
                 result.get("outcome"),
             )
-        confirmed = self.debouncer.observe(screen, identity)
-        if confirmed == "preparation":
-            self._handle_preparation(result)
-        elif confirmed == "result":
-            self._handle_result(result)
+        if screen == "preparation":
+            if self._preparation_active:
+                self._handle_preparation(result)
+            elif self.debouncer.observe(screen) == "preparation":
+                self._preparation_active = True
+                self._handle_preparation(result)
+        else:
+            self._preparation_active = False
+            if self.debouncer.observe(screen, identity) == "result":
+                self._handle_result(result)
         self._publish(self.status, result)
+
+    def _reset_screen_state(self) -> None:
+        self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
+        self._preparation_active = False
 
     def _handle_preparation(self, result: dict[str, Any]) -> None:
         nightfarer_id = result.get("nightfarer")
@@ -282,6 +293,17 @@ class RecognitionMonitor:
             )
             if pending.status is SessionStatus.INTERRUPTED and same_character and same_nightlord:
                 self.sessions.resume_interrupted(pending.id)
+            elif pending.status is not SessionStatus.INTERRUPTED:
+                self.sessions.update_preparation(
+                    pending.id,
+                    nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),
+                    nightlord_name=(
+                        None
+                        if hidden
+                        else self._nightlord_names.get(nightlord_id, nightlord_id)
+                    ),
+                    hidden_nightlord=hidden,
+                )
             return
         self.sessions.start_session(
             nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),

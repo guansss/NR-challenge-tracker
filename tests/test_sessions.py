@@ -90,6 +90,20 @@ class SessionServiceTests(unittest.TestCase):
         self.service.resume_interrupted(session.id)
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
+    def test_preparation_selection_updates_active_session(self) -> None:
+        session = self.start_executor()
+
+        updated = self.service.update_preparation(
+            session.id,
+            nightfarer="Wylder",
+            nightlord_name="Libra",
+            hidden_nightlord=False,
+        )
+
+        self.assertEqual(updated.nightfarer, "Wylder")
+        self.assertEqual(updated.nightlord_name, "Libra")
+        self.assertEqual(self.service.snapshot.sessions[0], updated)
+
     def test_manual_resolution_requires_explicit_outcome(self) -> None:
         session = self.start_executor()
         unresolved = self.service.finalize_result(
