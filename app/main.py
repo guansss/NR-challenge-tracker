@@ -73,7 +73,10 @@ def main() -> int:
                 entry["display_name"]
                 for entry in engine.manifest["nightfarers"]
             ],
-            ROOT / "config.yaml",
+            [
+                entry["display_name"]
+                for entry in engine.manifest["nightlords"]
+            ],
             opacity=settings.hud_opacity,
             font_size=settings.hud_font_size,
             width=settings.hud_width,
