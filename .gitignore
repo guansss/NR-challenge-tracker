@@ -1,5 +1,6 @@
 .vscode/
 
+/settings.yaml
 /history.yaml
 /title-state.json
 debug/
