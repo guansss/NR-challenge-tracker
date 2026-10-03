@@ -16,6 +16,7 @@ from app.nr_challenge_tracker.i18n import resolve_language, tr
 from app.nr_challenge_tracker.monitor import RecognitionMonitor
 from app.nr_challenge_tracker.recognition import RecognitionEngine
 from app.nr_challenge_tracker.sessions import SessionService
+from app.nr_challenge_tracker.settings import SettingsRepository
 from app.nr_challenge_tracker.title_state import TitleState
 from app.nr_challenge_tracker.ui import TrackerWindow
 
@@ -67,6 +68,7 @@ def main() -> int:
             result_interval_ms=settings.result_interval_ms,
             confirmations=settings.consecutive_confirmations,
         )
+        settings_repository = SettingsRepository(ROOT / "settings.yaml")
         window = TrackerWindow(
             sessions,
             monitor,
@@ -78,7 +80,9 @@ def main() -> int:
             width=settings.hud_width,
             recent_sessions=settings.hud_recent_sessions,
             language=language,
+            initial_geometry=settings_repository.load_hud_geometry(),
         )
+        window.geometry_saved.connect(settings_repository.save_hud_geometry)
         api.start()
         window.show()
         monitor.start()

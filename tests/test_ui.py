@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
 import os
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
+
+import yaml
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -16,6 +20,7 @@ from app.nr_challenge_tracker.models import (
     Session,
     SessionStatus,
 )
+from app.nr_challenge_tracker.settings import SettingsRepository
 from app.nr_challenge_tracker.streak import calculate_streak
 from app.nr_challenge_tracker.ui import ResolveSessionDialog, TrackerWindow
 
@@ -158,6 +163,52 @@ class TrackerWindowTests(unittest.TestCase):
             [unittest.mock.call("preparation"), unittest.mock.call("result")],
         )
         window.deleteLater()
+
+    def test_window_geometry_is_restored_after_close(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "settings.yaml"
+            settings_path.write_text("other: preserved\n", encoding="utf-8")
+            settings_repository = SettingsRepository(settings_path)
+            window = TrackerWindow(
+                sessions,
+                Mock(),
+                title_state,
+                [],
+                [],
+                initial_geometry=settings_repository.load_hud_geometry(),
+            )
+            window.geometry_saved.connect(settings_repository.save_hud_geometry)
+            window.move(120, 140)
+            window.resize(560, 520)
+            expected_geometry = window.geometry()
+            window.close()
+            saved_settings = yaml.safe_load(settings_path.read_text(encoding="utf-8"))
+
+            restarted = TrackerWindow(
+                sessions,
+                Mock(),
+                title_state,
+                [],
+                [],
+                initial_geometry=settings_repository.load_hud_geometry(),
+            )
+
+        self.assertEqual(saved_settings["other"], "preserved")
+        self.assertEqual(
+            saved_settings["hud"]["geometry"],
+            {"x": 120, "y": 140, "width": 560, "height": 520},
+        )
+        self.assertEqual(restarted.geometry(), expected_geometry)
+        restarted.deleteLater()
 
     def test_chinese_localizes_hud_and_monitor_status(self) -> None:
         sessions = Mock(

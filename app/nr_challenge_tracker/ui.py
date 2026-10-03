@@ -207,6 +207,7 @@ class ToggleSelectionListWidget(QListWidget):
 
 class TrackerWindow(QMainWindow):
     updated = Signal(object, str)
+    geometry_saved = Signal(int, int, int, int)
     _LOCK_HOTKEY_ID = 1
 
     def __init__(
@@ -222,6 +223,7 @@ class TrackerWindow(QMainWindow):
         width: int = 420,
         recent_sessions: int = 10,
         language: str = "en",
+        initial_geometry: tuple[int, int, int, int] | None = None,
     ) -> None:
         super().__init__()
         self.sessions = sessions
@@ -245,6 +247,8 @@ class TrackerWindow(QMainWindow):
         self.setMinimumWidth(320)
         self.setMaximumWidth(800)
         self.resize(width, 420)
+        if initial_geometry is not None:
+            self.setGeometry(*initial_geometry)
 
         panel = QWidget()
         panel_font = panel.font()
@@ -694,6 +698,7 @@ class TrackerWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         self._refresh_timer.stop()
+        self.geometry_saved.emit(self.x(), self.y(), self.width(), self.height())
         if self._hotkey_registered and os.name == "nt":
             self._unregister_lock_hotkey()
             self._hotkey_registered = False
