@@ -51,13 +51,11 @@ class HistoryRepository:
                 return self.save((), target=self.default_target)
             try:
                 raw = yaml.safe_load(self.path.read_text(encoding="utf-8"))
-                sessions, target, migrated = self._parse_document(raw)
+                sessions, target = self._parse_document(raw)
             except (OSError, yaml.YAMLError, TypeError, KeyError, ValueError) as error:
                 raise HistoryError(f"Could not load history at {self.path}: {error}") from error
 
             snapshot = self._snapshot(sessions, target)
-            if migrated:
-                self._write_document(snapshot)
             return snapshot
 
     def save(
@@ -80,7 +78,7 @@ class HistoryRepository:
 
     def _parse_document(
         self, raw: Any
-    ) -> tuple[tuple[Session, ...], int, bool]:
+    ) -> tuple[tuple[Session, ...], int]:
         if not isinstance(raw, dict):
             raise HistoryError("History document must be a YAML mapping")
         if raw.get("schema_version") != SCHEMA_VERSION:
@@ -94,32 +92,22 @@ class HistoryRepository:
         if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
             raise HistoryError("History challenge target must be a positive integer")
 
-        migrated = False
         sessions: list[Session] = []
         for record in records:
-            session, was_migrated = self._parse_session(record)
-            sessions.append(session)
-            migrated = migrated or was_migrated
-        return tuple(sessions), target, migrated
+            sessions.append(self._parse_session(record))
+        return tuple(sessions), target
 
     @staticmethod
-    def _parse_session(record: Any) -> tuple[Session, bool]:
+    def _parse_session(record: Any) -> Session:
         if not isinstance(record, dict):
             raise HistoryError("Each session record must be a YAML mapping")
         nightlord = record.get("nightlord")
-        migrated = isinstance(nightlord, str)
-        if migrated:
-            nightlord_data: dict[str, Any] = {
-                "hidden": False,
-                "base_name": nightlord,
-                "variant": NightlordVariant.UNKNOWN.value,
-            }
-        elif nightlord is None:
+        if nightlord is None:
             nightlord_data = {}
         elif isinstance(nightlord, dict):
             nightlord_data = nightlord
         else:
-            raise HistoryError("Session Nightlord must be a mapping or legacy string")
+            raise HistoryError("Session Nightlord must be a mapping or null")
 
         hidden = nightlord_data.get("hidden", False)
         if not isinstance(hidden, bool):
@@ -154,7 +142,7 @@ class HistoryRepository:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise HistoryError(f"Invalid session record: {error}") from error
-        return session, migrated
+        return session
 
     def _write_document(self, snapshot: HistorySnapshot) -> None:
         document = {

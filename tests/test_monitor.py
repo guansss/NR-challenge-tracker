@@ -14,12 +14,12 @@ from app.nr_challenge_tracker.sessions import SessionService
 class FakeRecognitionEngine:
     manifest = {
         "nightfarers": [
-            {"id": "executor", "display_name": "Executor"},
-            {"id": "wylder", "display_name": "Wylder"},
+            {"id": "executor"},
+            {"id": "wylder"},
         ],
         "nightlords": [
-            {"id": "adel", "display_name": "Adel"},
-            {"id": "libra", "display_name": "Libra"},
+            {"id": "adel"},
+            {"id": "libra"},
         ],
     }
 
@@ -126,8 +126,8 @@ class PreparationMonitorTests(unittest.TestCase):
             monitor._process(None)
 
             session = sessions.snapshot.sessions[0]
-            self.assertEqual(session.nightfarer, "Wylder")
-            self.assertEqual(session.nightlord_name, "Libra")
+            self.assertEqual(session.nightfarer, "wylder")
+            self.assertEqual(session.nightlord_name, "libra")
             self.assertEqual(monitor._sample_interval_ms, 200)
             self.assertTrue(monitor._preparation_active)
 
@@ -164,7 +164,7 @@ class ResultMonitorTests(unittest.TestCase):
                 HistoryRepository(Path(temp_dir) / "history.yaml")
             )
             active = sessions.start_session(
-                nightfarer="Executor",
+                nightfarer="executor",
                 nightlord_name=None,
                 hidden_nightlord=True,
                 started_at=datetime.now(timezone.utc) - timedelta(seconds=10),
@@ -197,7 +197,7 @@ class ResultMonitorTests(unittest.TestCase):
             session = sessions.snapshot.sessions[-1]
             self.assertFalse(monitor._result_active)
             self.assertEqual(session.status.value, "completed")
-            self.assertEqual(session.result_nightlord_name, "Libra")
+            self.assertEqual(session.result_nightlord_name, "libra")
             self.assertEqual(session.nightlord_variant, NightlordVariant.EVERDARK)
             self.assertEqual(session.progress, Progress.DAY_3_VICTORY)
 
@@ -257,8 +257,8 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
             start = datetime.now(timezone.utc) - timedelta(seconds=10)
             sessions = SessionService(HistoryRepository(root / "history.yaml"))
             previous = sessions.start_session(
-                nightfarer="Executor",
-                nightlord_name="Adel",
+                nightfarer="executor",
+                nightlord_name="adel",
                 hidden_nightlord=False,
                 started_at=start,
             )
@@ -266,21 +266,22 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
                 previous.id,
                 progress=Progress.DAY_1,
                 ended_at=start + timedelta(seconds=1),
-                nightlord_name="Adel",
+                nightlord_name="adel",
                 variant=NightlordVariant.NORMAL,
             )
             active = sessions.start_session(
-                nightfarer="Executor",
-                nightlord_name="Libra",
+                nightfarer="executor",
+                nightlord_name="libra",
                 hidden_nightlord=False,
                 started_at=start + timedelta(seconds=2),
             )
             debug_dir = root / "debug" / "screenshots"
+            updates = []
             monitor = RecognitionMonitor(
                 FakeRecognitionEngine([result, result]),
                 sessions,
                 "Nightreign",
-                lambda update, status: None,
+                lambda update, status: updates.append((update, status)),
                 confirmations=2,
                 debug_dir=debug_dir,
             )
@@ -307,11 +308,12 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
             blocked_path = root / "not-a-directory"
             blocked_path.write_text("blocked", encoding="utf-8")
             sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            updates = []
             monitor = RecognitionMonitor(
                 FakeRecognitionEngine([result, result]),
                 sessions,
                 "Nightreign",
-                lambda update, status: None,
+                lambda update, status: updates.append((update, status)),
                 confirmations=2,
                 debug_dir=blocked_path,
             )
@@ -320,7 +322,9 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
             monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))
 
             self.assertEqual(len(sessions.snapshot.sessions), 1)
-            self.assertTrue(monitor.status.startswith("Debug screenshot error:"))
+            self.assertEqual(monitor.status, "monitor.debug_screenshot_error")
+            self.assertEqual(updates[-1][1], "monitor.debug_screenshot_error")
+            self.assertTrue(updates[-1][0]["status_values"]["detail"])
 
 
 if __name__ == "__main__":

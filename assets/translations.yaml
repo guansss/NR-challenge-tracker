@@ -1,0 +1,292 @@
+app:
+  title:
+    en: "Nightreign Challenge Tracker"
+    zh: "黑夜君临挑战追踪器"
+
+common:
+  unknown:
+    en: "Unknown"
+    zh: "未知"
+  save:
+    en: "Save"
+    zh: "保存"
+  cancel:
+    en: "Cancel"
+    zh: "取消"
+
+actions:
+  pause:
+    en: "Pause"
+    zh: "暂停"
+  resume:
+    en: "Resume"
+    zh: "继续"
+  skip:
+    en: "Skip"
+    zh: "跳过"
+  resolve:
+    en: "Resolve"
+    zh: "修正"
+  lock:
+    en: "Lock"
+    zh: "锁定"
+  locked:
+    en: "Locked"
+    zh: "已锁定"
+  lock_tooltip:
+    en: "Pass mouse clicks through the HUD (Ctrl+Shift+L to unlock)"
+    zh: "将鼠标点击穿透 HUD（按 Ctrl+Shift+L 解锁）"
+
+session:
+  dialog_title:
+    en: "Resolve session"
+    zh: "修正场次"
+  select_nightlord:
+    en: "Select Nightlord"
+    zh: "选择夜王"
+  unknown_nightlord:
+    en: "Unknown Nightlord"
+    zh: "未知夜王"
+  hidden_nightlord:
+    en: "Hidden Nightlord"
+    zh: "隐藏夜王"
+  fields:
+    session:
+      en: "Session"
+      zh: "场次"
+    nightfarer:
+      en: "Nightfarer"
+      zh: "渡夜者"
+    nightlord:
+      en: "Nightlord"
+      zh: "夜王"
+    variant:
+      en: "Variant"
+      zh: "变体"
+    outcome:
+      en: "Outcome"
+      zh: "结果"
+    started:
+      en: "Started"
+      zh: "开始时间"
+    ended:
+      en: "Ended"
+      zh: "结束时间"
+
+nightfarers:
+  wylder:
+    en: "Wylder"
+    zh: "追踪者"
+  guardian:
+    en: "Guardian"
+    zh: "守护者"
+  ironeye:
+    en: "Ironeye"
+    zh: "铁眼"
+  duchess:
+    en: "Duchess"
+    zh: "女爵"
+  raider:
+    en: "Raider"
+    zh: "无赖"
+  revenant:
+    en: "Revenant"
+    zh: "复仇者"
+  recluse:
+    en: "Recluse"
+    zh: "隐士"
+  executor:
+    en: "Executor"
+    zh: "执行者"
+  scholar:
+    en: "Scholar"
+    zh: "学者"
+  undertaker:
+    en: "Undertaker"
+    zh: "送葬者"
+
+nightlords:
+  adel:
+    en: "Adel"
+    zh: "大嘴"
+  caligo:
+    en: "Caligo"
+    zh: "冰龙"
+  fulghor:
+    en: "Fulghor"
+    zh: "人马"
+  gladius:
+    en: "Gladius"
+    zh: "三狼"
+  gnoster:
+    en: "Gnoster"
+    zh: "虫子"
+  harmonia:
+    en: "Harmonia"
+    zh: "七仙女"
+  heolstor:
+    en: "Heolstor"
+    zh: "牢布"
+  libra:
+    en: "Libra"
+    zh: "山羊"
+  maris:
+    en: "Maris"
+    zh: "征兆"
+  straghess:
+    en: "Straghess"
+    zh: "垃圾王"
+
+outcome:
+  select:
+    en: "Select outcome"
+    zh: "选择结果"
+  day_1:
+    en: "Day 1"
+    zh: "初始日"
+  day_2:
+    en: "Day 2"
+    zh: "中间日"
+  day_3:
+    en: "Day 3"
+    zh: "最终日"
+  day_3_victory:
+    en: "Day 3 Victory"
+    zh: "最终日胜利"
+  victory:
+    en: "Victory"
+    zh: "胜利"
+
+variant:
+  normal:
+    en: "Normal"
+    zh: "普通"
+  everdark:
+    en: "Everdark"
+    zh: "永夜"
+  everdark_nightlord:
+    en: "Everdark {nightlord}"
+    zh: "永夜{nightlord}"
+  unknown:
+    en: "Unknown"
+    zh: "未知"
+
+hud:
+  heading:
+    en: "NIGHTREIGN / CHALLENGE"
+    zh: "黑夜君临 / 挑战"
+  no_active_session:
+    en: "No active session"
+    zh: "没有进行中的场次"
+  current:
+    en: "Current: {nightfarer} - {nightlord}"
+    zh: "当前：{nightfarer} - {nightlord}"
+  streak:
+    en: "{current} / {target}  |  Best {best}"
+    zh: "{current} / {target}  |  最佳 {best}"
+  title_sync:
+    en: "Title sync: {status}"
+    zh: "直播标题同步：{status}"
+  result:
+    en: "Result: {nightlord} · {variant} · {outcome}"
+    zh: "结果：{nightlord} · {variant} · {outcome}"
+  unknown_nightlord:
+    en: "Nightlord?"
+    zh: "夜王？"
+  unknown_variant:
+    en: "Variant?"
+    zh: "变体？"
+  unknown_outcome:
+    en: "Outcome?"
+    zh: "结果？"
+
+dialogs:
+  discard:
+    title:
+      en: "Discard session"
+      zh: "弃置场次"
+    select_session:
+      en: "Select a session to discard."
+      zh: "请选择要弃置的场次。"
+    confirm:
+      en: "Exclude this session from streak calculations?"
+      zh: "要将此场次排除在连胜统计之外吗？"
+  resolve:
+    no_sessions:
+      en: "There are no sessions to correct."
+      zh: "没有需要修正的场次。"
+    explicit_outcome_required:
+      en: "Select an explicit final outcome"
+      zh: "请选择明确的最终结果"
+
+errors:
+  title_rejected:
+    en: "Title rejected"
+    zh: "标题未被接受"
+  could_not_lock:
+    en: "Could not lock HUD"
+    zh: "无法锁定 HUD"
+  hotkey_in_use:
+    en: "Ctrl+Shift+L is already in use, so mouse passthrough was not enabled."
+    zh: "Ctrl+Shift+L 已被占用，未启用鼠标穿透。"
+  could_not_resolve:
+    en: "Could not resolve session"
+    zh: "无法修正场次"
+
+monitor:
+  starting:
+    en: "Starting monitor..."
+    zh: "正在启动监测…"
+  paused:
+    en: "Monitoring paused"
+    zh: "监测已暂停"
+  active:
+    en: "Monitoring active"
+    zh: "正在监测"
+  stopped:
+    en: "Stopped"
+    zh: "已停止"
+  window_unavailable:
+    en: "Game window unavailable"
+    zh: "未找到游戏窗口"
+  window_restored:
+    en: "Game window restored"
+    zh: "游戏窗口已恢复"
+  monitoring_window:
+    en: "Monitoring {title}"
+    zh: "正在监测：{title}"
+  capture_error:
+    en: "Capture error: {detail}"
+    zh: "捕获错误：{detail}"
+  debug_screenshot_error:
+    en: "Debug screenshot error: {detail}"
+    zh: "调试截图错误：{detail}"
+  session_started:
+    en: "Session started"
+    zh: "场次已开始"
+  result_recorded:
+    en: "Result recorded"
+    zh: "结果已记录"
+
+sync:
+  synced:
+    en: "Synced"
+    zh: "已同步"
+  pending:
+    en: "Pending"
+    zh: "等待同步"
+  retrying:
+    en: "Retrying"
+    zh: "正在重试"
+  authentication_required:
+    en: "Authentication required"
+    zh: "需要身份验证"
+  title_rejected:
+    en: "Title rejected"
+    zh: "标题未被接受"
+  offline:
+    en: "Offline"
+    zh: "离线"
+  disabled:
+    en: "Disabled"
+    zh: "已禁用"

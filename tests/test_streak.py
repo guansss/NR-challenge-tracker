@@ -28,8 +28,8 @@ def completed_session(
 class StreakTests(unittest.TestCase):
     def test_non_executor_outcome_does_not_break_executor_streak(self) -> None:
         sessions = [
-            completed_session("win-1", 0, "Executor", Progress.DAY_3_VICTORY),
-            completed_session("other-loss", 30, "Revenant", Progress.DAY_2),
+            completed_session("win-1", 0, "executor", Progress.DAY_3_VICTORY),
+            completed_session("other-loss", 30, "revenant", Progress.DAY_2),
             completed_session("win-2", 60, "executor", Progress.DAY_3_VICTORY),
         ]
 
@@ -41,9 +41,9 @@ class StreakTests(unittest.TestCase):
 
     def test_finalized_executor_nonvictory_resets_streak(self) -> None:
         sessions = [
-            completed_session("win-1", 0, "Executor", Progress.DAY_3_VICTORY),
-            completed_session("loss", 30, "Executor", Progress.DAY_1),
-            completed_session("win-2", 60, "Executor", Progress.DAY_3_VICTORY),
+            completed_session("win-1", 0, "executor", Progress.DAY_3_VICTORY),
+            completed_session("loss", 30, "executor", Progress.DAY_1),
+            completed_session("win-2", 60, "executor", Progress.DAY_3_VICTORY),
         ]
 
         stats = calculate_streak(sessions)
@@ -53,12 +53,12 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.streak_numbers, {"win-1": 1, "win-2": 1})
 
     def test_unresolved_executor_session_has_no_effect(self) -> None:
-        win = completed_session("win", 0, "Executor", Progress.DAY_3_VICTORY)
+        win = completed_session("win", 0, "executor", Progress.DAY_3_VICTORY)
         unresolved_start = START + timedelta(minutes=30)
         unresolved = Session(
             id="unknown",
             started_at=unresolved_start,
-            nightfarer="Executor",
+            nightfarer="executor",
             status=SessionStatus.UNRESOLVED,
         )
 
@@ -69,9 +69,9 @@ class StreakTests(unittest.TestCase):
 
     def test_sessions_are_recomputed_in_end_time_order(self) -> None:
         later_win = completed_session(
-            "later", 60, "Executor", Progress.DAY_3_VICTORY
+            "later", 60, "executor", Progress.DAY_3_VICTORY
         )
-        earlier_loss = completed_session("earlier", 0, "Executor", Progress.DAY_2)
+        earlier_loss = completed_session("earlier", 0, "executor", Progress.DAY_2)
 
         stats = calculate_streak([later_win, earlier_loss])
 
@@ -81,7 +81,7 @@ class StreakTests(unittest.TestCase):
     def test_current_streak_is_capped_but_victory_history_is_not(self) -> None:
         sessions = [
             completed_session(
-                f"win-{index}", index * 30, "Executor", Progress.DAY_3_VICTORY
+                f"win-{index}", index * 30, "executor", Progress.DAY_3_VICTORY
             )
             for index in range(102)
         ]
@@ -94,7 +94,7 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.streak_numbers["win-101"], 102)
 
     def test_duplicate_session_ids_are_rejected(self) -> None:
-        session = completed_session("same", 0, "Executor", Progress.DAY_3_VICTORY)
+        session = completed_session("same", 0, "executor", Progress.DAY_3_VICTORY)
 
         with self.assertRaisesRegex(ValueError, "unique"):
             calculate_streak([session, session])

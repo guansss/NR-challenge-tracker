@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .i18n import localized_name, tr
 from .models import NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
@@ -68,40 +69,48 @@ class ResolveSessionDialog(QDialog):
         nightlords: list[str],
         parent=None,
         *,
+        language: str = "en",
         selected_session_id: str | None = None,
     ):
         super().__init__(parent)
+        self.language = language
         self._sessions = sorted(
             sessions, key=lambda session: session.started_at, reverse=True
         )
-        self.setWindowTitle("Resolve session")
+        self.setWindowTitle(tr(language, "session.dialog_title"))
         self.session_picker = QComboBox()
         for session in self._sessions:
+            nightfarer = (
+                localized_name(language, "nightfarers", session.nightfarer)
+                if session.nightfarer
+                else tr(language, "common.unknown")
+            )
             self.session_picker.addItem(
-                f"{session.id[:8]} - {session.nightfarer or 'Unknown'}", session.id
+                f"{session.id[:8]} - {nightfarer}",
+                session.id,
             )
         if selected_session_id is not None:
             selected_index = self.session_picker.findData(selected_session_id)
             if selected_index >= 0:
                 self.session_picker.setCurrentIndex(selected_index)
         self.nightfarer = QComboBox()
-        self.nightfarer.addItem("Unknown", None)
+        self.nightfarer.addItem(tr(language, "common.unknown"), None)
         for name in nightfarers:
-            self.nightfarer.addItem(name, name)
+            self.nightfarer.addItem(localized_name(language, "nightfarers", name), name)
         self.nightlord = QComboBox()
-        self.nightlord.addItem("Select Nightlord", None)
+        self.nightlord.addItem(tr(language, "session.select_nightlord"), None)
         for name in nightlords:
-            self.nightlord.addItem(name, name)
+            self.nightlord.addItem(localized_name(language, "nightlords", name), name)
         self.variant = QComboBox()
         for variant in NightlordVariant:
-            self.variant.addItem(variant.value.title(), variant)
+            self.variant.addItem(tr(language, f"variant.{variant.value}"), variant)
         self.progress = QComboBox()
-        self.progress.addItem("Select outcome", None)
+        self.progress.addItem(tr(language, "outcome.select"), None)
         for label, progress in (
-            ("Day 1", Progress.DAY_1),
-            ("Day 2", Progress.DAY_2),
-            ("Day 3", Progress.DAY_3),
-            ("Victory", Progress.DAY_3_VICTORY),
+            (tr(language, "outcome.day_1"), Progress.DAY_1),
+            (tr(language, "outcome.day_2"), Progress.DAY_2),
+            (tr(language, "outcome.day_3"), Progress.DAY_3),
+            (tr(language, "outcome.victory"), Progress.DAY_3_VICTORY),
         ):
             self.progress.addItem(label, progress)
         self.started_at = QDateTimeEdit()
@@ -112,19 +121,25 @@ class ResolveSessionDialog(QDialog):
         self.ended_at.setCalendarPopup(True)
 
         form = QFormLayout()
-        form.addRow("Session", self.session_picker)
-        form.addRow("Nightfarer", self.nightfarer)
-        form.addRow("Nightlord", self.nightlord)
-        form.addRow("Variant", self.variant)
-        form.addRow("Outcome", self.progress)
-        form.addRow("Started", self.started_at)
-        form.addRow("Ended", self.ended_at)
+        form.addRow(tr(language, "session.fields.session"), self.session_picker)
+        form.addRow(tr(language, "session.fields.nightfarer"), self.nightfarer)
+        form.addRow(tr(language, "session.fields.nightlord"), self.nightlord)
+        form.addRow(tr(language, "session.fields.variant"), self.variant)
+        form.addRow(tr(language, "session.fields.outcome"), self.progress)
+        form.addRow(tr(language, "session.fields.started"), self.started_at)
+        form.addRow(tr(language, "session.fields.ended"), self.ended_at)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
             | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText(
+            tr(language, "common.save")
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(
+            tr(language, "common.cancel")
+        )
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addWidget(buttons)
@@ -206,11 +221,13 @@ class TrackerWindow(QMainWindow):
         font_size: int = 14,
         width: int = 420,
         recent_sessions: int = 10,
+        language: str = "en",
     ) -> None:
         super().__init__()
         self.sessions = sessions
         self.monitor = monitor
         self.title_state = title_state
+        self.language = language
         self.nightfarers = nightfarers
         self.nightlords = nightlords
         self.recent_sessions = recent_sessions
@@ -218,7 +235,7 @@ class TrackerWindow(QMainWindow):
         self._mouse_passthrough = False
         self._hotkey_registered = False
         self._live_result: dict[str, Any] | None = None
-        self.setWindowTitle("Nightreign Challenge Tracker")
+        self.setWindowTitle(tr(language, "app.title"))
         self.setWindowFlags(
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
@@ -252,7 +269,7 @@ class TrackerWindow(QMainWindow):
         layout.setSpacing(6)
 
         header = QHBoxLayout()
-        self.heading = QLabel("NIGHTREIGN / TRACKER")
+        self.heading = QLabel(tr(language, "hud.heading"))
         self.heading.setFont(panel_font)
         self.heading.setStyleSheet("font-weight: 700; color: #b5d6c1;")
         close_button = QPushButton("×")
@@ -264,7 +281,7 @@ class TrackerWindow(QMainWindow):
         header.addWidget(close_button)
         layout.addLayout(header)
 
-        self.current_label = QLabel("No active session")
+        self.current_label = QLabel(tr(language, "hud.no_active_session"))
         self.current_label.setWordWrap(True)
         current_font = QFont(panel_font)
         current_font.setPixelSize(int(font_size * 1.1))
@@ -275,9 +292,11 @@ class TrackerWindow(QMainWindow):
         streak_font.setPixelSize(int(font_size * 1.8))
         self.streak_label.setFont(streak_font)
         self.streak_label.setStyleSheet("color: #9ed7ae;")
-        self.monitor_label = QLabel("Starting monitor...")
+        self.monitor_label = QLabel(tr(language, "monitor.starting"))
         self.monitor_label.setFont(panel_font)
-        self.sync_label = QLabel("Title sync: Pending")
+        self.sync_label = QLabel(
+            tr(language, "hud.title_sync", status=tr(language, "sync.pending"))
+        )
         self.sync_label.setFont(panel_font)
         self.history = ToggleSelectionListWidget()
         self.history.setFont(panel_font)
@@ -293,10 +312,10 @@ class TrackerWindow(QMainWindow):
         layout.addWidget(self.sync_label)
 
         actions = QHBoxLayout()
-        self.pause_button = QPushButton("Pause")
-        self.skip_button = QPushButton("Skip")
-        self.resolve_button = QPushButton("Resolve")
-        self.lock_button = QPushButton("Lock")
+        self.pause_button = QPushButton(tr(language, "actions.pause"))
+        self.skip_button = QPushButton(tr(language, "actions.skip"))
+        self.resolve_button = QPushButton(tr(language, "actions.resolve"))
+        self.lock_button = QPushButton(tr(language, "actions.lock"))
         self.lock_button.setObjectName("lockButton")
         self.lock_button.setProperty("locked", False)
         for button in (
@@ -310,13 +329,14 @@ class TrackerWindow(QMainWindow):
             button_size = button.sizeHint()
             if button is self.lock_button:
                 locked_text_width = (
-                    QFontMetrics(panel_font).horizontalAdvance("Locked") + 20
+                    QFontMetrics(panel_font).horizontalAdvance(
+                        tr(language, "actions.locked")
+                    )
+                    + 20
                 )
                 button_size.setWidth(max(button_size.width(), locked_text_width))
             button.setFixedSize(button_size)
-        self.lock_button.setToolTip(
-            "Pass mouse clicks through the HUD (Ctrl+Shift+L to unlock)"
-        )
+        self.lock_button.setToolTip(tr(language, "actions.lock_tooltip"))
         self.pause_button.clicked.connect(self.toggle_pause)
         self.skip_button.clicked.connect(self.skip_active)
         self.resolve_button.clicked.connect(self.resolve_session)
@@ -353,7 +373,12 @@ class TrackerWindow(QMainWindow):
             if isinstance(recognition, dict) and recognition.get("screen") == "result"
             else None
         )
-        self.monitor_label.setText(status)
+        status_values = (
+            payload.get("status_values") if isinstance(payload, dict) else None
+        )
+        if not isinstance(status_values, dict):
+            status_values = {}
+        self.monitor_label.setText(tr(self.language, status, **status_values))
         self.refresh()
 
     def refresh(self) -> None:
@@ -363,13 +388,23 @@ class TrackerWindow(QMainWindow):
             title_view = self.title_state.update(stats)
         except ValueError as error:
             title_view = self.title_state.view(stats)
-            title_view["sync_status"] = "Title rejected"
+            title_view["sync_status"] = "sync.title_rejected"
             title_view["sync_message"] = str(error)
         self.streak_label.setText(
-            f"{stats.current_streak} / {stats.target}  |  Best {stats.best_streak}"
+            tr(
+                self.language,
+                "hud.streak",
+                current=stats.current_streak,
+                target=stats.target,
+                best=stats.best_streak,
+            )
         )
         self.sync_label.setText(
-            f"Title sync: {title_view['sync_status']}"
+            tr(
+                self.language,
+                "hud.title_sync",
+                status=tr(self.language, title_view["sync_status"]),
+            )
             + (f" · {title_view['sync_message']}" if title_view["sync_message"] else "")
         )
         active = next(
@@ -381,14 +416,26 @@ class TrackerWindow(QMainWindow):
             None,
         )
         if active:
-            nightlord = (
-                "Hidden Nightlord"
-                if active.nightlord_hidden and not active.nightlord_name
-                else active.nightlord_name or "Unknown Nightlord"
+            if active.nightlord_hidden and not active.nightlord_name:
+                nightlord = tr(self.language, "session.hidden_nightlord")
+            elif active.nightlord_name:
+                nightlord = localized_name(
+                    self.language, "nightlords", active.nightlord_name
+                )
+            else:
+                nightlord = tr(self.language, "session.unknown_nightlord")
+            current_text = tr(
+                self.language,
+                "hud.current",
+                nightfarer=(
+                    localized_name(self.language, "nightfarers", active.nightfarer)
+                    if active.nightfarer
+                    else tr(self.language, "common.unknown")
+                ),
+                nightlord=nightlord,
             )
-            current_text = f"Current: {active.nightfarer or 'Unknown'} - {nightlord}"
         else:
-            current_text = "No active session"
+            current_text = tr(self.language, "hud.no_active_session")
         if self._live_result is not None:
             current_text += "\n" + self._format_live_result(self._live_result)
         self.current_label.setText(current_text)
@@ -409,7 +456,7 @@ class TrackerWindow(QMainWindow):
             reverse=True,
         )[: self.recent_sessions]
         for session in recent_sessions:
-            item = QListWidgetItem(_format_session(session, stats))
+            item = QListWidgetItem(_format_session(session, stats, self.language))
             item.setData(Qt.ItemDataRole.UserRole, session.id)
             self.history.addItem(item)
             if session.id == selected_id:
@@ -417,26 +464,38 @@ class TrackerWindow(QMainWindow):
 
     def _format_live_result(self, recognition: dict[str, Any]) -> str:
         nightlord_id = recognition.get("nightlord")
-        nightlord_names = getattr(self.monitor, "_nightlord_names", {})
         nightlord = (
-            nightlord_names.get(nightlord_id)
-            or str(nightlord_id).replace("_", " ").title()
+            localized_name(self.language, "nightlords", str(nightlord_id))
             if nightlord_id not in (None, "unknown")
-            else "Nightlord?"
+            else tr(self.language, "hud.unknown_nightlord")
         )
         variant = recognition.get("variant")
         variant_label = (
-            str(variant).replace("_", " ").title()
-            if variant not in (None, "unknown")
-            else "Variant?"
+            tr(self.language, f"variant.{variant}")
+            if variant in {"normal", "everdark"}
+            else tr(self.language, "variant.unknown")
         )
         outcome = recognition.get("outcome")
+        outcome_keys = {
+            "day_1": "outcome.day_1",
+            "day_2": "outcome.day_2",
+            "day_3": "outcome.day_3",
+            "day_3_victory": "outcome.day_3_victory",
+            "victory": "outcome.victory",
+        }
+        outcome_key = outcome_keys.get(outcome)
         outcome_label = (
-            str(outcome).replace("_", " ").title()
-            if outcome not in (None, "unknown")
-            else "Outcome?"
+            tr(self.language, outcome_key)
+            if outcome_key is not None
+            else tr(self.language, "hud.unknown_outcome")
         )
-        return f"Result: {nightlord} · {variant_label} · {outcome_label}"
+        return tr(
+            self.language,
+            "hud.result",
+            nightlord=nightlord,
+            variant=variant_label,
+            outcome=outcome_label,
+        )
 
     def toggle_mouse_passthrough(self) -> None:
         if self._mouse_passthrough:
@@ -462,13 +521,13 @@ class TrackerWindow(QMainWindow):
                 self.show()
                 QMessageBox.warning(
                     self,
-                    "Could not lock HUD",
-                    "Ctrl+Shift+L is already in use, so mouse passthrough was not enabled.",
+                    tr(self.language, "errors.could_not_lock"),
+                    tr(self.language, "errors.hotkey_in_use"),
                 )
                 return
             self._hotkey_registered = True
         self._mouse_passthrough = True
-        self.lock_button.setText("Locked")
+        self.lock_button.setText(tr(self.language, "actions.locked"))
         self._set_lock_button_locked(True)
 
     def _set_lock_button_locked(self, locked: bool) -> None:
@@ -484,7 +543,7 @@ class TrackerWindow(QMainWindow):
             self._hotkey_registered = False
         self.setWindowFlag(Qt.WindowType.WindowTransparentForInput, False)
         self._mouse_passthrough = False
-        self.lock_button.setText("Lock")
+        self.lock_button.setText(tr(self.language, "actions.lock"))
         self._set_lock_button_locked(False)
         self.show()
 
@@ -512,16 +571,16 @@ class TrackerWindow(QMainWindow):
     def toggle_pause(self) -> None:
         if not self.monitor._thread or not self.monitor._thread.is_alive():
             self.monitor.start()
-            self.pause_button.setText("Pause")
+            self.pause_button.setText(tr(self.language, "actions.pause"))
             return
         if self.monitor.is_paused:
             self.monitor.resume()
-            self.pause_button.setText("Pause")
+            self.pause_button.setText(tr(self.language, "actions.pause"))
             if not self.monitor._thread or not self.monitor._thread.is_alive():
                 self.monitor.start()
         else:
             self.monitor.pause()
-            self.pause_button.setText("Resume")
+            self.pause_button.setText(tr(self.language, "actions.resume"))
 
     def skip_active(self) -> None:
         selected_item = self.history.currentItem()
@@ -547,13 +606,15 @@ class TrackerWindow(QMainWindow):
             )
         if target is None:
             QMessageBox.information(
-                self, "Discard session", "Select a session to discard."
+                self,
+                tr(self.language, "dialogs.discard.title"),
+                tr(self.language, "dialogs.discard.select_session"),
             )
             return
         answer = QMessageBox.question(
             self,
-            "Discard session",
-            "Exclude this session from streak calculations?",
+            tr(self.language, "dialogs.discard.title"),
+            tr(self.language, "dialogs.discard.confirm"),
         )
         if answer is QMessageBox.StandardButton.Yes:
             self.sessions.discard_session(target.id)
@@ -567,7 +628,9 @@ class TrackerWindow(QMainWindow):
         ]
         if not unresolved:
             QMessageBox.information(
-                self, "Resolve session", "There are no sessions to correct."
+                self,
+                tr(self.language, "session.dialog_title"),
+                tr(self.language, "dialogs.resolve.no_sessions"),
             )
             return
         selected_item = self.history.currentItem()
@@ -579,6 +642,7 @@ class TrackerWindow(QMainWindow):
             self.nightfarers,
             self.nightlords,
             self,
+            language=self.language,
             selected_session_id=selected_session_id,
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -589,7 +653,9 @@ class TrackerWindow(QMainWindow):
         try:
             selected_progress = dialog.selected_progress()
             if selected_progress is None:
-                raise SessionTransitionError("Select an explicit final outcome")
+                raise SessionTransitionError(
+                    tr(self.language, "dialogs.resolve.explicit_outcome_required")
+                )
             self.sessions.resolve_session(
                 session_id,
                 nightfarer=selected_nightfarer,
@@ -600,7 +666,11 @@ class TrackerWindow(QMainWindow):
                 ended_at=dialog.ended_at.dateTime().toPython().astimezone(),
             )
         except (SessionTransitionError, ValueError) as error:
-            QMessageBox.warning(self, "Could not resolve session", str(error))
+            QMessageBox.warning(
+                self,
+                tr(self.language, "errors.could_not_resolve"),
+                str(error),
+            )
         self.refresh()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -634,20 +704,29 @@ class TrackerWindow(QMainWindow):
             application.quit()
 
 
-def _format_session(session: Session, stats: StreakStats) -> str:
+def _format_session(session: Session, stats: StreakStats, language: str = "en") -> str:
     streak_number = stats.streak_numbers.get(session.id)
     number = f"#{streak_number} " if streak_number is not None else ""
-    nightlord = session.nightlord_name or "Unknown Nightlord"
+    nightlord = (
+        localized_name(language, "nightlords", session.nightlord_name)
+        if session.nightlord_name
+        else tr(language, "session.unknown_nightlord")
+    )
     if session.nightlord_variant is NightlordVariant.EVERDARK:
-        nightlord = f"Everdark {nightlord}"
+        nightlord = tr(language, "variant.everdark_nightlord", nightlord=nightlord)
     elif session.nightlord_variant is NightlordVariant.UNKNOWN:
         nightlord = f"{nightlord} (?)"
     outcome = {
-        Progress.DAY_1: "Day 1",
-        Progress.DAY_2: "Day 2",
-        Progress.DAY_3: "Day 3",
-        Progress.DAY_3_VICTORY: "Victory",
-    }.get(session.progress, "Unknown")
+        Progress.DAY_1: tr(language, "outcome.day_1"),
+        Progress.DAY_2: tr(language, "outcome.day_2"),
+        Progress.DAY_3: tr(language, "outcome.day_3"),
+        Progress.DAY_3_VICTORY: tr(language, "outcome.victory"),
+    }.get(session.progress, tr(language, "common.unknown"))
     timestamp_source = session.ended_at or session.started_at
     timestamp = timestamp_source.astimezone().strftime("%Y/%m/%d %H:%M:%S")
-    return f"{number}{session.nightfarer or 'Unknown'} - {nightlord} - {outcome}\n{timestamp}"
+    nightfarer = (
+        localized_name(language, "nightfarers", session.nightfarer)
+        if session.nightfarer
+        else tr(language, "common.unknown")
+    )
+    return f"{number}{nightfarer} - {nightlord} - {outcome}\n{timestamp}"

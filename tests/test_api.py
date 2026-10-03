@@ -49,17 +49,17 @@ class StreakApiTests(unittest.TestCase):
         status, payload = self.request(
             "POST",
             "/api/sync-status",
-            {"status": "Synced", "revision": 4, "message": ""},
+            {"status": "sync.synced", "revision": 4, "message": ""},
         )
 
         self.assertEqual(status, 200)
         self.assertTrue(payload["accepted"])
-        self.assertEqual(self.reports, [("Synced", 4, "")])
+        self.assertEqual(self.reports, [("sync.synced", 4, "")])
 
         stale_status, stale_payload = self.request(
             "POST",
             "/api/sync-status",
-            {"status": "Synced", "revision": 3},
+            {"status": "sync.synced", "revision": 3},
         )
         self.assertEqual(stale_status, 409)
         self.assertFalse(stale_payload["accepted"])

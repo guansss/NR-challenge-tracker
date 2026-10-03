@@ -26,30 +26,30 @@ MANIFEST_PATH = ROOT / PATHS["template_manifest"]
 CONTACT_SHEET_PATH = ROOT / PATHS["contact_sheet"]
 
 NIGHTFARERS = (
-    ("wylder", "Wylder"),
-    ("guardian", "Guardian"),
-    ("ironeye", "Ironeye"),
-    ("duchess", "Duchess"),
-    ("raider", "Raider"),
-    ("revenant", "Revenant"),
-    ("recluse", "Recluse"),
-    ("executor", "Executor"),
-    ("scholar", "Scholar"),
-    ("undertaker", "Undertaker"),
+    "wylder",
+    "guardian",
+    "ironeye",
+    "duchess",
+    "raider",
+    "revenant",
+    "recluse",
+    "executor",
+    "scholar",
+    "undertaker",
 )
 
-NIGHTLORD_NAMES = {
-    "adel": "Adel",
-    "caligo": "Caligo",
-    "fulghor": "Fulghor",
-    "gladius": "Gladius",
-    "gnoster": "Gnoster",
-    "harmonia": "Harmonia",
-    "heolstor": "Heolstor",
-    "libra": "Libra",
-    "maris": "Maris",
-    "straghess": "Straghess",
-}
+NIGHTLORDS = (
+    "adel",
+    "caligo",
+    "fulghor",
+    "gladius",
+    "gnoster",
+    "harmonia",
+    "heolstor",
+    "libra",
+    "maris",
+    "straghess",
+)
 
 # Normalized to the supplied 16:9 screenshots. The portrait grid uses its
 # measured 2560x1440 cell positions, scaled to each source image's dimensions.
@@ -172,12 +172,12 @@ def preparation_files() -> dict[str, Path]:
         require(len(parts) == 2, f"Unexpected preparation filename: {path.name}")
         nightlord_id, nightfarer_id = parts
         require(
-            nightfarer_id in {identifier for identifier, _ in NIGHTFARERS},
+            nightfarer_id in NIGHTFARERS,
             f"Unknown Nightfarer in {path.name}",
         )
         if nightlord_id != "hidden":
             require(
-                nightlord_id in NIGHTLORD_NAMES, f"Unknown Nightlord in {path.name}"
+                nightlord_id in NIGHTLORDS, f"Unknown Nightlord in {path.name}"
             )
         files[path.name] = path
     require(files, f"No preparation screenshots found in {PREPARATION_DIR}")
@@ -191,7 +191,7 @@ def result_files() -> list[tuple[Path, str, bool, str]]:
         nightlord_label, progress_label = path.stem.lower().split("_", 1)
         is_everdark = nightlord_label.endswith("-everdark")
         nightlord_id = nightlord_label.removesuffix("-everdark")
-        require(nightlord_id in NIGHTLORD_NAMES, f"Unknown Nightlord in {path.name}")
+        require(nightlord_id in NIGHTLORDS, f"Unknown Nightlord in {path.name}")
         require(
             progress_label in {"day1", "day2", "day3", "victory"},
             f"Unknown progress label in {path.name}",
@@ -210,7 +210,7 @@ def validate_dataset(
         if not path.stem.lower().startswith("hidden_")
     }
     require(
-        nightlords == set(NIGHTLORD_NAMES),
+        nightlords == set(NIGHTLORDS),
         f"Preparation Nightlord coverage mismatch: {sorted(nightlords)}",
     )
     require(
@@ -258,10 +258,10 @@ def generate() -> dict[str, Any]:
 
     assets: list[dict[str, Any]] = []
     nightlord_templates: dict[str, dict[str, str | None]] = {
-        identifier: {"normal": None, "everdark": None} for identifier in NIGHTLORD_NAMES
+        identifier: {"normal": None, "everdark": None} for identifier in NIGHTLORDS
     }
     result_icon_templates: dict[str, dict[str, str | None]] = {
-        identifier: {"normal": None, "everdark": None} for identifier in NIGHTLORD_NAMES
+        identifier: {"normal": None, "everdark": None} for identifier in NIGHTLORDS
     }
     for path in prep.values():
         nightlord_id = path.stem.lower().split("_", 1)[0]
@@ -298,7 +298,7 @@ def generate() -> dict[str, Any]:
     # Avoid using the selected character's screenshot for its portrait so the
     # blue selection emblem cannot contaminate that identity template.
     character_sources: dict[str, Path] = {}
-    for identifier, _ in NIGHTFARERS:
+    for identifier in NIGHTFARERS:
         candidates = [
             path
             for path in prep.values()
@@ -308,7 +308,7 @@ def generate() -> dict[str, Any]:
         character_sources[identifier] = candidates[0]
 
     unselected_marker_templates: dict[str, str] = {}
-    for index, (identifier, _) in enumerate(NIGHTFARERS):
+    for index, identifier in enumerate(NIGHTFARERS):
         column = index % 5
         row = index // 5
         left = round(GRID_X[column] * width / REFERENCE_WIDTH) + GRID_MARGIN
@@ -353,7 +353,7 @@ def generate() -> dict[str, Any]:
     )
     executor_index = next(
         index
-        for index, (identifier, _) in enumerate(NIGHTFARERS)
+        for index, identifier in enumerate(NIGHTFARERS)
         if identifier == "executor"
     )
     marker_column = executor_index % 5
@@ -440,22 +440,20 @@ def generate() -> dict[str, Any]:
     nightfarer_catalog = [
         {
             "id": identifier,
-            "display_name": display_name,
             "portrait_template": f"assets/templates/nightfarers/{identifier}.png",
         }
-        for identifier, display_name in NIGHTFARERS
+        for identifier in NIGHTFARERS
     ]
     nightlord_catalog = [
         {
             "id": identifier,
-            "display_name": display_name,
             "everdark_available_in_dataset": any(
                 sample[1] == identifier and sample[2] for sample in results
             ),
             "templates": nightlord_templates[identifier],
             "result_icon_templates": result_icon_templates[identifier],
         }
-        for identifier, display_name in NIGHTLORD_NAMES.items()
+        for identifier in NIGHTLORDS
     ]
     manifest: dict[str, Any] = {
         "schema_version": 1,
@@ -563,7 +561,7 @@ def validate_output() -> dict[str, Any]:
     require(len(manifest.get("nightfarers", [])) == 10, "Expected 10 Nightfarers")
     require(
         set(manifest.get("markers", {}).get("unselected_nightfarers", {}))
-        == {identifier for identifier, _ in NIGHTFARERS},
+        == set(NIGHTFARERS),
         "Expected one unselected marker template per Nightfarer",
     )
     require(len(manifest.get("nightlords", [])) == 10, "Expected 10 Nightlords")

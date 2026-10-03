@@ -19,7 +19,9 @@ Accepted preparation and result screens are also saved as annotated PNGs under `
 
 ## Configuration
 
-Edit `config.yaml` to tune recognition ROIs and sampling intervals. The supplied coordinates and confidence thresholds are initial values calibrated against the included 2560x1440 screenshot set. The app validates runtime settings and binds the local API only to a loopback address.
+Set `language` in `config.yaml` to `auto`, `en`, or `zh`. With `auto`, the app checks the system's preferred UI languages in order and uses the first supported language; if neither English nor Chinese is listed, it falls back to English. UI translations are grouped by feature in `assets/translations.yaml`.
+
+Recognition ROIs, confidence thresholds, and sampling intervals are configured separately in `config.yaml`; the supplied values are starting points calibrated against the included 2560x1440 screenshot set. The app validates runtime settings and binds the local API only to a loopback address.
 
 For Bilibili title updates, set `bilibili.room_id` to the target live-room ID and install `app/integrations/bilibili.user.js` in Tampermonkey. Sign in to Bilibili in the same browser profile. The userscript polls `http://127.0.0.1:5678/api/streak`; it does not store cookies or CSRF tokens in the tracker. The title limit in config is a guardrail and still needs confirmation against Bilibili's current account rules and update response.
 

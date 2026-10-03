@@ -4,25 +4,24 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
 from threading import RLock
 from typing import Any
 
 from .history import HistoryError
 from .streak import StreakStats
 
-
-SYNC_STATES = {
-    "Synced",
-    "Pending",
-    "Retrying",
-    "Authentication required",
-    "Title rejected",
-    "Offline",
-}
-
-
+SYNC_STATES = frozenset(
+    {
+        "sync.synced",
+        "sync.pending",
+        "sync.retrying",
+        "sync.authentication_required",
+        "sync.title_rejected",
+        "sync.offline",
+    }
+)
 class TitleState:
     def __init__(
         self,
@@ -40,7 +39,7 @@ class TitleState:
         self._lock = RLock()
         self._revision = 0
         self._desired_title = ""
-        self._sync_status = "Pending"
+        self._sync_status = "sync.pending"
         self._sync_message = ""
         self._load()
 
@@ -60,7 +59,7 @@ class TitleState:
             if title != self._desired_title:
                 self._desired_title = title
                 self._revision += 1
-                self._sync_status = "Pending"
+                self._sync_status = "sync.pending"
                 self._sync_message = ""
                 self._save()
             return self.view(stats)
@@ -101,7 +100,7 @@ class TitleState:
                 raise ValueError("title state must be an object")
             revision = data.get("revision")
             title = data.get("desired_title")
-            status = data.get("sync_status", "Pending")
+            status = data.get("sync_status", "sync.pending")
             if (
                 isinstance(revision, bool)
                 or not isinstance(revision, int)
@@ -116,7 +115,9 @@ class TitleState:
             self._sync_status = status
             self._sync_message = str(data.get("sync_message", ""))[:200]
         except (OSError, json.JSONDecodeError, ValueError) as error:
-            raise HistoryError(f"Could not load title state at {self.path}: {error}") from error
+            raise HistoryError(
+                f"Could not load title state at {self.path}: {error}"
+            ) from error
 
     def _save(self) -> None:
         document = {
@@ -142,7 +143,9 @@ class TitleState:
                 os.fsync(temporary_file.fileno())
             os.replace(temporary_path, self.path)
         except OSError as error:
-            raise HistoryError(f"Could not save title state at {self.path}: {error}") from error
+            raise HistoryError(
+                f"Could not save title state at {self.path}: {error}"
+            ) from error
         finally:
             if temporary_path is not None and temporary_path.exists():
                 temporary_path.unlink()

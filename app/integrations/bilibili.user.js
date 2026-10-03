@@ -80,7 +80,7 @@
     }
     pollIntervalMs = payload.polling_interval_seconds * 1000;
     if (!Number.isInteger(payload.room_id)) {
-      await report("Title rejected", payload.revision, "Configure bilibili.room_id in config.yaml");
+      await report("sync.title_rejected", payload.revision, "Configure bilibili.room_id in config.yaml");
       return;
     }
 
@@ -94,18 +94,18 @@
       saved?.revision === payload.revision &&
       saved?.title === payload.desired_title
     ) {
-      await report("Synced", payload.revision);
+      await report("sync.synced", payload.revision);
       return;
     }
     if (Date.now() < nextUpdateAt) {
-      await report("Retrying", payload.revision);
+      await report("sync.retrying", payload.revision);
       return;
     }
 
     const csrf = csrfToken();
     if (!csrf) {
       await report(
-        "Authentication required",
+        "sync.authentication_required",
         payload.revision,
         "Bilibili CSRF token unavailable",
       );
@@ -133,13 +133,13 @@
       );
       retryDelayMs = POLL_INTERVAL_MS;
       nextUpdateAt = 0;
-      await report("Synced", payload.revision);
+      await report("sync.synced", payload.revision);
     } catch (error) {
       const status = error.auth
-        ? "Authentication required"
+        ? "sync.authentication_required"
         : error.rejected
-          ? "Title rejected"
-          : "Retrying";
+          ? "sync.title_rejected"
+          : "sync.retrying";
       await report(status, payload.revision, error.message || "Request failed");
       retryDelayMs = Math.min(Math.max(retryDelayMs * 2, POLL_INTERVAL_MS), 60000);
       nextUpdateAt = Date.now() + retryDelayMs;
@@ -162,7 +162,7 @@
         localStorage.removeItem(STORAGE_KEY);
       }
       if (saved?.revision !== undefined) {
-        await report("Offline", saved.revision, error.message || "Tracker unavailable");
+        await report("sync.offline", saved.revision, error.message || "Tracker unavailable");
       }
       retryDelayMs = Math.min(Math.max(retryDelayMs * 2, POLL_INTERVAL_MS), 60000);
       nextUpdateAt = Date.now() + retryDelayMs;

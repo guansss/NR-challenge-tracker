@@ -11,6 +11,7 @@ import yaml
 
 @dataclass(frozen=True, slots=True)
 class AppSettings:
+    language: str
     target_window: str
     target: int
     idle_interval_ms: int
@@ -49,10 +50,12 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
         bilibili = data["bilibili"]
         hud = data["hud"]
         target = _positive_int(streak["target"], "streak.target")
+        language = _language(data.get("language", "auto"))
         room_id = bilibili.get("room_id")
         if room_id is not None:
             room_id = _positive_int(room_id, "bilibili.room_id")
         settings = AppSettings(
+            language=language,
             target_window=_nonempty_string(capture["target_window"], "capture.target_window"),
             target=target,
             idle_interval_ms=_positive_int(sampling["idle_ms"], "sampling.idle_ms"),
@@ -134,3 +137,9 @@ def _bounded_number(value: Any, minimum: float, maximum: float, name: str) -> fl
     if not minimum <= number <= maximum:
         raise ValueError(f"{name} must be between {minimum} and {maximum}")
     return number
+
+
+def _language(value: Any) -> str:
+    if not isinstance(value, str) or value not in {"auto", "en", "zh"}:
+        raise ValueError("language must be one of: auto, en, zh")
+    return value

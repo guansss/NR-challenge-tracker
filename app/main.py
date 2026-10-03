@@ -12,12 +12,12 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from app.nr_challenge_tracker.api import StreakApiServer
 from app.nr_challenge_tracker.config import load_project_settings
 from app.nr_challenge_tracker.history import HistoryRepository, default_history_path
+from app.nr_challenge_tracker.i18n import resolve_language, tr
 from app.nr_challenge_tracker.monitor import RecognitionMonitor
 from app.nr_challenge_tracker.recognition import RecognitionEngine
 from app.nr_challenge_tracker.sessions import SessionService
 from app.nr_challenge_tracker.title_state import TitleState
 from app.nr_challenge_tracker.ui import TrackerWindow
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,18 +25,20 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     application = QApplication(sys.argv)
     application.setApplicationName("Nightreign Challenge Tracker")
+    language = resolve_language("auto")
     signal.signal(signal.SIGINT, lambda *_: application.quit())
     interrupt_timer = QTimer(application)
     interrupt_timer.timeout.connect(lambda: None)
     interrupt_timer.start(250)
     try:
         project_config, settings = load_project_settings(ROOT)
+        language = resolve_language(settings.language)
         engine = RecognitionEngine(ROOT, project_config)
         history_path = default_history_path(ROOT)
         sessions = SessionService(
             HistoryRepository(history_path, default_target=settings.target),
             everdark_nightlords={
-                entry["display_name"]
+                entry["id"]
                 for entry in engine.manifest["nightlords"]
                 if entry.get("everdark_available_in_dataset")
             },
@@ -69,18 +71,13 @@ def main() -> int:
             sessions,
             monitor,
             title_state,
-            [
-                entry["display_name"]
-                for entry in engine.manifest["nightfarers"]
-            ],
-            [
-                entry["display_name"]
-                for entry in engine.manifest["nightlords"]
-            ],
+            [entry["id"] for entry in engine.manifest["nightfarers"]],
+            [entry["id"] for entry in engine.manifest["nightlords"]],
             opacity=settings.hud_opacity,
             font_size=settings.hud_font_size,
             width=settings.hud_width,
             recent_sessions=settings.hud_recent_sessions,
+            language=language,
         )
         api.start()
         window.show()
@@ -90,7 +87,7 @@ def main() -> int:
         finally:
             api.close()
     except Exception as error:
-        QMessageBox.critical(None, "Nightreign Tracker", str(error))
+        QMessageBox.critical(None, tr(language, "app.title"), str(error))
         return 1
 
 

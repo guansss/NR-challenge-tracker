@@ -81,19 +81,11 @@ class RecognitionMonitor:
         self._state_lock = threading.Lock()
         self._sample_interval_ms = idle_interval_ms
         self._last_sample = 0.0
-        self._status = "Stopped"
+        self._status = "monitor.stopped"
         self._window_handle: int | None = None
         self._window_unavailable = False
         self._capture_ended = threading.Event()
-        self._capture_error_message = ""
-        self._nightfarer_names = {
-            entry["id"]: entry["display_name"]
-            for entry in engine.manifest["nightfarers"]
-        }
-        self._nightlord_names = {
-            entry["id"]: entry["display_name"]
-            for entry in engine.manifest["nightlords"]
-        }
+        self._capture_error_detail = ""
         self._preparation_active = False
         engine_root = getattr(engine, "root", None)
         self.debug_dir = (
@@ -126,14 +118,14 @@ class RecognitionMonitor:
         self._paused.set()
         self._drain_frames()
         self._reset_screen_state()
-        self._publish("Monitoring paused")
+        self._publish("monitor.paused")
 
     def resume(self) -> None:
         self._paused.clear()
         self._last_sample = 0.0
         self._drain_frames()
         self._reset_screen_state()
-        self._publish("Monitoring active")
+        self._publish("monitor.active")
 
     @property
     def is_paused(self) -> bool:
@@ -147,7 +139,7 @@ class RecognitionMonitor:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
         self._interrupt_active_session()
-        self._publish("Stopped")
+        self._publish("monitor.stopped")
 
     def _run(self) -> None:
         try:
@@ -158,13 +150,13 @@ class RecognitionMonitor:
                         self._interrupt_active_session()
                         if not self._window_unavailable:
                             self._window_unavailable = True
-                            self._publish("Game window unavailable")
+                            self._publish("monitor.window_unavailable")
                         self._stop.wait(1.0)
                         continue
                     hwnd, title = target
                     self._window_handle = hwnd
                     self._capture_ended.clear()
-                    self._capture_error_message = ""
+                    self._capture_error_detail = ""
                     self._drain_frames()
                     self._reset_screen_state()
                     self._capture = WindowsWindowCapture(
@@ -179,7 +171,9 @@ class RecognitionMonitor:
                     )
                     self._capture.start()
                     self._window_unavailable = False
-                    self._publish(f"Monitoring {title}")
+                    self._publish(
+                        "monitor.monitoring_window", status_values={"title": title}
+                    )
 
                 if self._capture_ended.is_set():
                     self._interrupt_active_session()
@@ -187,9 +181,13 @@ class RecognitionMonitor:
                     self._capture = None
                     self._window_handle = None
                     self._drain_frames()
-                    self._publish(
-                        self._capture_error_message or "Game window unavailable"
-                    )
+                    if self._capture_error_detail:
+                        self._publish(
+                            "monitor.capture_error",
+                            status_values={"detail": self._capture_error_detail},
+                        )
+                    else:
+                        self._publish("monitor.window_unavailable")
                     self._stop.wait(1.0)
                     continue
 
@@ -201,12 +199,12 @@ class RecognitionMonitor:
                         self._interrupt_active_session()
                         self._drain_frames()
                         self._reset_screen_state()
-                        self._publish("Game window unavailable")
+                        self._publish("monitor.window_unavailable")
                     self._stop.wait(0.25)
                     continue
                 if self._window_unavailable:
                     self._window_unavailable = False
-                    self._publish("Game window restored")
+                    self._publish("monitor.window_restored")
                 try:
                     image = self._frames.get(timeout=0.5)
                 except Empty:
@@ -219,7 +217,9 @@ class RecognitionMonitor:
         except Exception as error:
             self._stop.set()
             self._interrupt_active_session()
-            self._publish(f"Capture error: {error}")
+            self._publish(
+                "monitor.capture_error", status_values={"detail": str(error)}
+            )
         finally:
             if self._capture:
                 self._capture.stop()
@@ -304,8 +304,9 @@ class RecognitionMonitor:
             else None
         )
         self._publish(
-            f"Debug screenshot error: {debug_error}" if debug_error else self.status,
+            "monitor.debug_screenshot_error" if debug_error else self.status,
             result,
+            status_values={"detail": debug_error} if debug_error else None,
             screen_entry=screen_entry,
         )
 
@@ -330,15 +331,11 @@ class RecognitionMonitor:
             None,
         )
         if pending is not None:
-            same_character = (pending.nightfarer or "").casefold() == (
-                self._nightfarer_names.get(nightfarer_id, nightfarer_id) or ""
-            ).casefold()
+            same_character = (pending.nightfarer or "").casefold() == nightfarer_id.casefold()
             same_nightlord = pending.nightlord_hidden == hidden and (
                 hidden
                 or (pending.nightlord_name or "").casefold()
-                == (
-                    self._nightlord_names.get(nightlord_id, nightlord_id) or ""
-                ).casefold()
+                == nightlord_id.casefold()
             )
             if (
                 pending.status is SessionStatus.INTERRUPTED
@@ -349,26 +346,18 @@ class RecognitionMonitor:
             elif pending.status is not SessionStatus.INTERRUPTED:
                 return self.sessions.update_preparation(
                     pending.id,
-                    nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),
-                    nightlord_name=(
-                        None
-                        if hidden
-                        else self._nightlord_names.get(nightlord_id, nightlord_id)
-                    ),
+                    nightfarer=nightfarer_id,
+                    nightlord_name=None if hidden else nightlord_id,
                     hidden_nightlord=hidden,
                 )
             return None
         session = self.sessions.start_session(
-            nightfarer=self._nightfarer_names.get(nightfarer_id, nightfarer_id),
-            nightlord_name=(
-                None
-                if hidden
-                else self._nightlord_names.get(nightlord_id, nightlord_id)
-            ),
+            nightfarer=nightfarer_id,
+            nightlord_name=None if hidden else nightlord_id,
             hidden_nightlord=hidden,
             started_at=datetime.now().astimezone(),
         )
-        self._publish("Session started", result)
+        self._publish("monitor.session_started", result)
         return session
 
     def _remember_result(self, result: dict[str, Any]) -> None:
@@ -403,14 +392,10 @@ class RecognitionMonitor:
             session.id,
             progress=progress,
             ended_at=datetime.now(timezone.utc).astimezone(),
-            nightlord_name=(
-                self._nightlord_names.get(nightlord_id, nightlord_id)
-                if nightlord_id
-                else None
-            ),
+            nightlord_name=nightlord_id or None,
             variant=_variant_from_value(result.get("variant")),
         )
-        self._publish("Result recorded", result)
+        self._publish("monitor.result_recorded", result)
         return finalized
 
     def _save_debug_screenshot(
@@ -483,7 +468,7 @@ class RecognitionMonitor:
         self._capture_ended.set()
 
     def _capture_error(self, error: Exception) -> None:
-        self._capture_error_message = f"Capture error: {error}"
+        self._capture_error_detail = str(error)
         self._capture_ended.set()
 
     def _interrupt_active_session(self) -> None:
@@ -501,20 +486,22 @@ class RecognitionMonitor:
 
     def _publish(
         self,
-        status: str,
+        status_key: str,
         recognition: dict[str, Any] | None = None,
         *,
+        status_values: dict[str, str] | None = None,
         screen_entry: str | None = None,
     ) -> None:
         with self._state_lock:
-            self._status = status
+            self._status = status_key
         self.on_update(
             {
                 "snapshot": self.sessions.snapshot,
                 "recognition": recognition,
+                "status_values": status_values or {},
                 "screen_entry": screen_entry,
             },
-            status,
+            status_key,
         )
 
 

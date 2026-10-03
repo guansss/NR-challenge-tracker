@@ -1,4 +1,5 @@
 schema_version: 1
+language: auto
 
 paths:
   preparation_screens: assets/dataset/preparation-screens

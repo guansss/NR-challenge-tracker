@@ -29,25 +29,38 @@ class ResolveSessionDialogTests(unittest.TestCase):
         session = Session(
             id="needs-resolution",
             started_at=datetime(2026, 10, 3, tzinfo=timezone.utc),
-            nightfarer="Executor",
-            nightlord_name="Caligo",
+            nightfarer="executor",
+            nightlord_name="caligo",
             progress=Progress.DAY_3_VICTORY,
             status=SessionStatus.UNRESOLVED,
         )
 
-        nightlords = ["Adel", "Caligo", "Fulghor"]
-        dialog = ResolveSessionDialog([session], ["Executor"], nightlords)
+        nightlords = ["adel", "caligo", "fulghor"]
+        dialog = ResolveSessionDialog([session], ["executor"], nightlords)
 
         self.assertIsNone(dialog.progress.currentData())
         self.assertEqual(
             [dialog.nightlord.itemData(index) for index in range(dialog.nightlord.count())],
             [None, *nightlords],
         )
-        self.assertEqual(dialog.nightlord.currentData(), "Caligo")
+        self.assertEqual(dialog.nightlord.currentData(), "caligo")
         dialog.progress.setCurrentIndex(
             dialog.progress.findData(Progress.DAY_3_VICTORY)
         )
         self.assertIs(dialog.selected_progress(), Progress.DAY_3_VICTORY)
+        dialog.close()
+
+    def test_dialog_labels_follow_configured_language(self) -> None:
+        dialog = ResolveSessionDialog([], ["executor"], ["adel"], language="zh")
+
+        self.assertEqual(dialog.windowTitle(), "修正场次")
+        self.assertEqual(dialog.nightfarer.itemText(0), "未知")
+        self.assertEqual(dialog.nightfarer.itemText(1), "执行者")
+        self.assertEqual(dialog.nightfarer.itemData(1), "executor")
+        self.assertEqual(dialog.nightlord.itemText(0), "选择夜王")
+        self.assertEqual(dialog.nightlord.itemText(1), "大嘴")
+        self.assertEqual(dialog.nightlord.itemData(1), "adel")
+        self.assertEqual(dialog.progress.itemText(0), "选择结果")
         dialog.close()
 
     def test_switching_sessions_reloads_all_form_fields(self) -> None:
@@ -57,8 +70,8 @@ class ResolveSessionDialogTests(unittest.TestCase):
         first = Session(
             id="first-session",
             started_at=first_started,
-            nightfarer="Executor",
-            nightlord_name="Caligo",
+            nightfarer="executor",
+            nightlord_name="caligo",
             nightlord_variant=NightlordVariant.NORMAL,
             status=SessionStatus.UNRESOLVED,
         )
@@ -66,8 +79,8 @@ class ResolveSessionDialogTests(unittest.TestCase):
             id="second-session",
             started_at=second_started,
             ended_at=second_ended,
-            nightfarer="Raider",
-            nightlord_name="Adel",
+            nightfarer="raider",
+            nightlord_name="adel",
             nightlord_variant=NightlordVariant.EVERDARK,
             progress=Progress.DAY_2,
             status=SessionStatus.COMPLETED,
@@ -75,8 +88,8 @@ class ResolveSessionDialogTests(unittest.TestCase):
 
         dialog = ResolveSessionDialog(
             [first, second],
-            ["Executor", "Raider"],
-            ["Adel", "Caligo"],
+            ["executor", "raider"],
+            ["adel", "caligo"],
             selected_session_id="second-session",
         )
 
@@ -89,9 +102,9 @@ class ResolveSessionDialogTests(unittest.TestCase):
             ["second-session", "first-session"],
         )
         self.assertIsInstance(dialog.session_picker.currentData(), str)
-        self.assertEqual(dialog.nightfarer.currentData(), "Raider")
+        self.assertEqual(dialog.nightfarer.currentData(), "raider")
         self.assertIsInstance(dialog.nightfarer.currentData(), str)
-        self.assertEqual(dialog.nightlord.currentData(), "Adel")
+        self.assertEqual(dialog.nightlord.currentData(), "adel")
         self.assertIsInstance(dialog.nightlord.currentData(), str)
         self.assertIs(dialog.selected_variant(), NightlordVariant.EVERDARK)
         self.assertIs(dialog.selected_progress(), Progress.DAY_2)
@@ -107,8 +120,8 @@ class ResolveSessionDialogTests(unittest.TestCase):
         dialog.session_picker.setCurrentIndex(
             dialog.session_picker.findData("first-session")
         )
-        self.assertEqual(dialog.nightfarer.currentData(), "Executor")
-        self.assertEqual(dialog.nightlord.currentData(), "Caligo")
+        self.assertEqual(dialog.nightfarer.currentData(), "executor")
+        self.assertEqual(dialog.nightlord.currentData(), "caligo")
         self.assertIs(dialog.selected_variant(), NightlordVariant.NORMAL)
         self.assertIsNone(dialog.selected_progress())
         dialog.close()
@@ -125,20 +138,47 @@ class TrackerWindowTests(unittest.TestCase):
         )
         title_state = Mock()
         title_state.update.return_value = {
-            "sync_status": "Disabled",
+            "sync_status": "sync.disabled",
             "sync_message": "",
         }
         window = TrackerWindow(sessions, Mock(), title_state, [], [])
 
         with patch("app.nr_challenge_tracker.ui._play_screen_cue") as play_cue:
-            window.monitor_update({"screen_entry": "preparation"}, "Monitoring")
-            window.monitor_update({"screen_entry": "result"}, "Monitoring")
+            payload = {"status_values": {"title": "Nightreign"}}
+            window.monitor_update(
+                {"screen_entry": "preparation", **payload}, "monitor.monitoring_window"
+            )
+            window.monitor_update(
+                {"screen_entry": "result", **payload}, "monitor.monitoring_window"
+            )
             self.application.processEvents()
 
         self.assertEqual(
             play_cue.call_args_list,
             [unittest.mock.call("preparation"), unittest.mock.call("result")],
         )
+        window.deleteLater()
+
+    def test_chinese_localizes_hud_and_monitor_status(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        window = TrackerWindow(
+            sessions, Mock(), title_state, [], [], language="zh"
+        )
+
+        self.assertEqual(window.windowTitle(), "黑夜君临挑战追踪器")
+        self.assertEqual(window.pause_button.text(), "暂停")
+        self.assertEqual(window.current_label.text(), "没有进行中的场次")
+        self.assertEqual(window.sync_label.text(), "直播标题同步：已禁用")
+        window.monitor_update({}, "monitor.window_unavailable")
+        self.application.processEvents()
+        self.assertEqual(window.monitor_label.text(), "未找到游戏窗口")
         window.deleteLater()
 
     def test_screen_cues_load_the_configured_audio_assets(self) -> None:
@@ -167,7 +207,7 @@ class TrackerWindowTests(unittest.TestCase):
         active = Session(
             id="active-session",
             started_at=datetime(2026, 10, 3, tzinfo=timezone.utc),
-            nightfarer="Executor",
+            nightfarer="executor",
             nightlord_hidden=True,
             status=SessionStatus.ACTIVE,
         )
@@ -176,15 +216,14 @@ class TrackerWindowTests(unittest.TestCase):
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
-        monitor._nightlord_names = {"libra": "Libra"}
         title_state = Mock()
         title_state.update.return_value = {
-            "sync_status": "Disabled",
+            "sync_status": "sync.disabled",
             "sync_message": "",
         }
 
         window = TrackerWindow(
-            sessions, monitor, title_state, ["Executor"], ["Libra"]
+            sessions, monitor, title_state, ["executor"], ["libra"]
         )
         window.monitor_update(
             {
@@ -193,9 +232,10 @@ class TrackerWindowTests(unittest.TestCase):
                     "nightlord": "libra",
                     "variant": "everdark",
                     "outcome": "day_3_victory",
-                }
+                },
+                "status_values": {"title": "Nightreign"},
             },
-            "Monitoring Nightreign",
+            "monitor.monitoring_window",
         )
         self.application.processEvents()
 
@@ -204,6 +244,50 @@ class TrackerWindowTests(unittest.TestCase):
             "Current: Executor - Hidden Nightlord\nResult: Libra · Everdark · Day 3 Victory",
         )
         self.assertIs(snapshot.sessions[0].status, SessionStatus.ACTIVE)
+        window.deleteLater()
+
+    def test_character_names_follow_configured_language(self) -> None:
+        active = Session(
+            id="active-session",
+            started_at=datetime(2026, 10, 3, tzinfo=timezone.utc),
+            nightfarer="executor",
+            nightlord_name="caligo",
+            status=SessionStatus.ACTIVE,
+        )
+        completed = Session(
+            id="completed-session",
+            started_at=datetime(2026, 10, 2, tzinfo=timezone.utc),
+            ended_at=datetime(2026, 10, 2, 1, tzinfo=timezone.utc),
+            nightfarer="wylder",
+            nightlord_name="adel",
+            nightlord_variant=NightlordVariant.EVERDARK,
+            progress=Progress.DAY_3,
+            status=SessionStatus.COMPLETED,
+        )
+        snapshot = HistorySnapshot(
+            sessions=(completed, active), stats=calculate_streak((completed, active))
+        )
+        sessions = Mock(snapshot=snapshot)
+        monitor = Mock()
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+
+        window = TrackerWindow(
+            sessions,
+            monitor,
+            title_state,
+            ["executor", "wylder"],
+            ["adel", "caligo"],
+            language="zh",
+        )
+
+        self.assertEqual(window.current_label.text(), "当前：执行者 - 冰龙")
+        self.assertIn(
+            "追踪者 - 永夜大嘴 - 最终日", window.history.item(0).text()
+        )
         window.deleteLater()
 
     def test_history_respects_configured_recent_session_limit(self) -> None:
@@ -223,7 +307,7 @@ class TrackerWindowTests(unittest.TestCase):
         monitor = Mock()
         title_state = Mock()
         title_state.update.return_value = {
-            "sync_status": "Disabled",
+            "sync_status": "sync.disabled",
             "sync_message": "",
         }
 
@@ -231,8 +315,8 @@ class TrackerWindowTests(unittest.TestCase):
             sessions,
             monitor,
             title_state,
-            ["Executor"],
-            ["Caligo"],
+            ["executor"],
+            ["caligo"],
             recent_sessions=2,
         )
 
@@ -253,7 +337,7 @@ class TrackerWindowTests(unittest.TestCase):
             id="needs-resolution",
             started_at=started_at,
             ended_at=ended_at,
-            nightfarer="Executor",
+            nightfarer="executor",
             status=SessionStatus.UNRESOLVED,
         )
         discarded = Session(
@@ -265,8 +349,8 @@ class TrackerWindowTests(unittest.TestCase):
         active = Session(
             id="active-session",
             started_at=started_at,
-            nightfarer="Executor",
-            nightlord_name="Caligo",
+            nightfarer="executor",
+            nightlord_name="caligo",
             status=SessionStatus.ACTIVE,
         )
         snapshot = HistorySnapshot(
@@ -277,7 +361,7 @@ class TrackerWindowTests(unittest.TestCase):
         monitor = Mock()
         title_state = Mock()
         title_state.update.return_value = {
-            "sync_status": "Disabled",
+            "sync_status": "sync.disabled",
             "sync_message": "",
         }
 
@@ -285,8 +369,8 @@ class TrackerWindowTests(unittest.TestCase):
             sessions,
             monitor,
             title_state,
-            ["Executor"],
-            ["Caligo"],
+            ["executor"],
+            ["caligo"],
             font_size=18,
         )
         window._refresh_timer.stop()

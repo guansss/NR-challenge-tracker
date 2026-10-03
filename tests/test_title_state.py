@@ -29,13 +29,13 @@ class TitleStateTests(unittest.TestCase):
             path = Path(directory) / "title.json"
             state = TitleState(path, "{current_streak}/{target}", 40, 123)
             state.update(StreakStats(7, 7, 7, 100, {}))
-            state.report_sync("Synced", 1)
+            state.report_sync("sync.synced", 1)
 
             restarted = TitleState(path, "{current_streak}/{target}", 40, 123)
             view = restarted.update(StreakStats(7, 7, 7, 100, {}))
 
             self.assertEqual(view["revision"], 1)
-            self.assertEqual(view["sync_status"], "Synced")
+            self.assertEqual(view["sync_status"], "sync.synced")
 
     def test_stale_sync_report_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -44,7 +44,7 @@ class TitleStateTests(unittest.TestCase):
             )
             state.update(StreakStats(2, 2, 2, 100, {}))
 
-            self.assertFalse(state.report_sync("Synced", 0))
+            self.assertFalse(state.report_sync("sync.synced", 0))
 
     def test_title_length_is_validated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -22,8 +22,8 @@ class SessionServiceTests(unittest.TestCase):
 
     def start_executor(self):
         return self.service.start_session(
-            nightfarer="Executor",
-            nightlord_name="Harmonia",
+            nightfarer="executor",
+            nightlord_name="harmonia",
             hidden_nightlord=False,
             started_at=START,
         )
@@ -35,7 +35,7 @@ class SessionServiceTests(unittest.TestCase):
             session.id,
             progress=Progress.DAY_3_VICTORY,
             ended_at=START + timedelta(minutes=45),
-            nightlord_name="Harmonia",
+            nightlord_name="harmonia",
             variant=NightlordVariant.EVERDARK,
         )
 
@@ -55,18 +55,18 @@ class SessionServiceTests(unittest.TestCase):
             session.id,
             progress=Progress.DAY_3_VICTORY,
             ended_at=START + timedelta(minutes=45),
-            nightlord_name="Adel",
+            nightlord_name="adel",
         )
 
         self.assertEqual(result.status, SessionStatus.UNRESOLVED)
-        self.assertEqual(result.nightlord_name, "Harmonia")
-        self.assertEqual(result.result_nightlord_name, "Adel")
+        self.assertEqual(result.nightlord_name, "harmonia")
+        self.assertEqual(result.result_nightlord_name, "adel")
         self.assertIn("identity conflict", result.review_reason or "")
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
     def test_hidden_nightlord_without_result_identity_stays_unresolved(self) -> None:
         session = self.service.start_session(
-            nightfarer="Executor",
+            nightfarer="executor",
             nightlord_name=None,
             hidden_nightlord=True,
             started_at=START,
@@ -95,13 +95,13 @@ class SessionServiceTests(unittest.TestCase):
 
         updated = self.service.update_preparation(
             session.id,
-            nightfarer="Wylder",
-            nightlord_name="Libra",
+            nightfarer="wylder",
+            nightlord_name="libra",
             hidden_nightlord=False,
         )
 
-        self.assertEqual(updated.nightfarer, "Wylder")
-        self.assertEqual(updated.nightlord_name, "Libra")
+        self.assertEqual(updated.nightfarer, "wylder")
+        self.assertEqual(updated.nightlord_name, "libra")
         self.assertEqual(self.service.snapshot.sessions[0], updated)
 
     def test_manual_resolution_requires_explicit_outcome(self) -> None:
@@ -115,8 +115,8 @@ class SessionServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(SessionTransitionError, "explicit outcome"):
             self.service.resolve_session(
                 session.id,
-                nightfarer="Executor",
-                nightlord_name="Harmonia",
+                nightfarer="executor",
+                nightlord_name="harmonia",
                 variant=NightlordVariant.UNKNOWN,
                 progress=Progress.UNKNOWN,
                 ended_at=unresolved.ended_at,
@@ -124,8 +124,8 @@ class SessionServiceTests(unittest.TestCase):
 
         resolved = self.service.resolve_session(
             session.id,
-            nightfarer="Executor",
-            nightlord_name="Harmonia",
+            nightfarer="executor",
+            nightlord_name="harmonia",
             variant=NightlordVariant.UNKNOWN,
             progress=Progress.DAY_3_VICTORY,
             ended_at=unresolved.ended_at,
@@ -136,11 +136,11 @@ class SessionServiceTests(unittest.TestCase):
     def test_everdark_variant_must_exist_in_catalog(self) -> None:
         validated_service = SessionService(
             HistoryRepository(Path(self.temp_dir.name) / "validated.yaml"),
-            everdark_nightlords={"Harmonia"},
+            everdark_nightlords={"harmonia"},
         )
         session = validated_service.start_session(
-            nightfarer="Executor",
-            nightlord_name="Heolstor",
+            nightfarer="executor",
+            nightlord_name="heolstor",
             hidden_nightlord=False,
             started_at=START,
         )
@@ -150,7 +150,7 @@ class SessionServiceTests(unittest.TestCase):
                 session.id,
                 progress=Progress.DAY_3_VICTORY,
                 ended_at=START + timedelta(minutes=45),
-                nightlord_name="Heolstor",
+                nightlord_name="heolstor",
                 variant=NightlordVariant.EVERDARK,
             )
 

@@ -5,38 +5,27 @@ source_dimensions:
 source_aspect_ratio: '16:9'
 nightfarers:
 - id: wylder
-  display_name: Wylder
   portrait_template: assets/templates/nightfarers/wylder.png
 - id: guardian
-  display_name: Guardian
   portrait_template: assets/templates/nightfarers/guardian.png
 - id: ironeye
-  display_name: Ironeye
   portrait_template: assets/templates/nightfarers/ironeye.png
 - id: duchess
-  display_name: Duchess
   portrait_template: assets/templates/nightfarers/duchess.png
 - id: raider
-  display_name: Raider
   portrait_template: assets/templates/nightfarers/raider.png
 - id: revenant
-  display_name: Revenant
   portrait_template: assets/templates/nightfarers/revenant.png
 - id: recluse
-  display_name: Recluse
   portrait_template: assets/templates/nightfarers/recluse.png
 - id: executor
-  display_name: Executor
   portrait_template: assets/templates/nightfarers/executor.png
 - id: scholar
-  display_name: Scholar
   portrait_template: assets/templates/nightfarers/scholar.png
 - id: undertaker
-  display_name: Undertaker
   portrait_template: assets/templates/nightfarers/undertaker.png
 nightlords:
 - id: adel
-  display_name: Adel
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/adel.png
@@ -45,7 +34,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/adel.png
     everdark: assets/templates/nightlord_result_icons/adel-everdark.png
 - id: caligo
-  display_name: Caligo
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/caligo.png
@@ -54,7 +42,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/caligo.png
     everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
 - id: fulghor
-  display_name: Fulghor
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/fulghor.png
@@ -63,7 +50,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/fulghor.png
     everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
 - id: gladius
-  display_name: Gladius
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/gladius.png
@@ -72,7 +58,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/gladius.png
     everdark: assets/templates/nightlord_result_icons/gladius-everdark.png
 - id: gnoster
-  display_name: Gnoster
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/gnoster.png
@@ -81,7 +66,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/gnoster.png
     everdark: assets/templates/nightlord_result_icons/gnoster-everdark.png
 - id: harmonia
-  display_name: Harmonia
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/harmonia.png
@@ -90,7 +74,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/harmonia.png
     everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
 - id: heolstor
-  display_name: Heolstor
   everdark_available_in_dataset: false
   templates:
     normal: assets/templates/nightlord_preparation_icons/heolstor.png
@@ -99,7 +82,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/heolstor.png
     everdark: null
 - id: libra
-  display_name: Libra
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/libra.png
@@ -108,7 +90,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/libra.png
     everdark: assets/templates/nightlord_result_icons/libra-everdark.png
 - id: maris
-  display_name: Maris
   everdark_available_in_dataset: true
   templates:
     normal: assets/templates/nightlord_preparation_icons/maris.png
@@ -117,7 +98,6 @@ nightlords:
     normal: assets/templates/nightlord_result_icons/maris.png
     everdark: assets/templates/nightlord_result_icons/maris-everdark.png
 - id: straghess
-  display_name: Straghess
   everdark_available_in_dataset: false
   templates:
     normal: assets/templates/nightlord_preparation_icons/straghess.png
