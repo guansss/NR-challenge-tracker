@@ -5,10 +5,12 @@ from __future__ import annotations
 import ctypes
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QDateTime, Qt, QTimer, Signal
+from PySide6.QtCore import QDateTime, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QFont, QFontMetrics, QMouseEvent
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -35,6 +37,27 @@ from .monitor import RecognitionMonitor
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
 from .streak import StreakStats
 from .title_state import TitleState
+
+_SCREEN_CUE_FILES = {
+    "preparation": "correct.mp3",
+    "result": "picked-coin-echo-2.mp3",
+}
+_SCREEN_CUE_PLAYERS: dict[str, QMediaPlayer] = {}
+
+
+def _play_screen_cue(screen: str) -> None:
+    filename = _SCREEN_CUE_FILES.get(screen)
+    if filename is None:
+        return
+    player = _SCREEN_CUE_PLAYERS.get(screen)
+    if player is None:
+        player = QMediaPlayer()
+        player.setAudioOutput(QAudioOutput(player))
+        sound_path = Path(__file__).resolve().parents[2] / "assets" / "sound" / filename
+        player.setSource(QUrl.fromLocalFile(str(sound_path)))
+        _SCREEN_CUE_PLAYERS[screen] = player
+    player.setPosition(0)
+    player.play()
 
 
 class ResolveSessionDialog(QDialog):
@@ -319,6 +342,11 @@ class TrackerWindow(QMainWindow):
         self.updated.emit(payload, status)
 
     def _refresh_from_signal(self, payload: object, status: str) -> None:
+        screen_entry = (
+            payload.get("screen_entry") if isinstance(payload, dict) else None
+        )
+        if screen_entry in {"preparation", "result"}:
+            _play_screen_cue(screen_entry)
         recognition = payload.get("recognition") if isinstance(payload, dict) else None
         self._live_result = (
             recognition

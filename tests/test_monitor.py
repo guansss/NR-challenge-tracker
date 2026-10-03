@@ -66,6 +66,39 @@ class ScreenDebouncerTests(unittest.TestCase):
         )
 
 
+class ScreenEntryEventTests(unittest.TestCase):
+    def test_monitor_publishes_one_event_per_confirmed_screen_entry(self) -> None:
+        results = [
+            {"screen": "preparation"},
+            {"screen": "preparation"},
+            {"screen": "preparation"},
+            {"screen": "unknown"},
+            {"screen": "result"},
+            {"screen": "result"},
+            {"screen": "result"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(Path(temp_dir) / "history.yaml")
+            )
+            updates: list[dict[str, object]] = []
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda payload, status: updates.append(payload),
+                confirmations=2,
+            )
+
+            for _ in results:
+                monitor._process(None)
+
+        self.assertEqual(
+            [update["screen_entry"] for update in updates if update["screen_entry"]],
+            ["preparation", "result"],
+        )
+
+
 class PreparationMonitorTests(unittest.TestCase):
     def test_active_preparation_updates_each_frame_and_exits_when_gone(self) -> None:
         results = [

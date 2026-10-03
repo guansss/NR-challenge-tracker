@@ -265,12 +265,14 @@ class RecognitionMonitor:
                 result.get("outcome"),
             )
         recognized_session = None
+        screen_entry = None
         if screen == "preparation":
             if self._result_active:
                 recognized_session = self._finish_result()
             if self._preparation_active:
                 recognized_session = self._handle_preparation(result)
             elif self.debouncer.observe(screen) == "preparation":
+                screen_entry = screen
                 self._preparation_active = True
                 recognized_session = self._handle_preparation(result)
         elif screen == "result":
@@ -279,6 +281,7 @@ class RecognitionMonitor:
                 self._remember_result(result)
                 recognized_session = self._active_session()
             elif self.debouncer.observe(screen, identity) == "result":
+                screen_entry = screen
                 self._result_active = True
                 self._pending_result = {}
                 self._remember_result(result)
@@ -303,6 +306,7 @@ class RecognitionMonitor:
         self._publish(
             f"Debug screenshot error: {debug_error}" if debug_error else self.status,
             result,
+            screen_entry=screen_entry,
         )
 
     def _reset_screen_state(self) -> None:
@@ -495,11 +499,22 @@ class RecognitionMonitor:
             except Empty:
                 return
 
-    def _publish(self, status: str, recognition: dict[str, Any] | None = None) -> None:
+    def _publish(
+        self,
+        status: str,
+        recognition: dict[str, Any] | None = None,
+        *,
+        screen_entry: str | None = None,
+    ) -> None:
         with self._state_lock:
             self._status = status
         self.on_update(
-            {"snapshot": self.sessions.snapshot, "recognition": recognition}, status
+            {
+                "snapshot": self.sessions.snapshot,
+                "recognition": recognition,
+                "screen_entry": screen_entry,
+            },
+            status,
         )
 
 

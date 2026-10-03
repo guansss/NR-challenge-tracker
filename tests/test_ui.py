@@ -119,6 +119,50 @@ class TrackerWindowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_screen_entry_events_play_the_matching_cues(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "Disabled",
+            "sync_message": "",
+        }
+        window = TrackerWindow(sessions, Mock(), title_state, [], [])
+
+        with patch("app.nr_challenge_tracker.ui._play_screen_cue") as play_cue:
+            window.monitor_update({"screen_entry": "preparation"}, "Monitoring")
+            window.monitor_update({"screen_entry": "result"}, "Monitoring")
+            self.application.processEvents()
+
+        self.assertEqual(
+            play_cue.call_args_list,
+            [unittest.mock.call("preparation"), unittest.mock.call("result")],
+        )
+        window.deleteLater()
+
+    def test_screen_cues_load_the_configured_audio_assets(self) -> None:
+        from app.nr_challenge_tracker import ui
+
+        players = [Mock(), Mock()]
+        with (
+            patch.object(ui, "_SCREEN_CUE_PLAYERS", {}),
+            patch.object(ui, "QMediaPlayer", side_effect=players),
+            patch.object(ui, "QAudioOutput"),
+        ):
+            ui._play_screen_cue("preparation")
+            ui._play_screen_cue("result")
+
+        self.assertEqual(
+            [
+                os.path.basename(player.setSource.call_args.args[0].toLocalFile())
+                for player in players
+            ],
+            ["correct.mp3", "picked-coin-echo-2.mp3"],
+        )
+        for player in players:
+            player.play.assert_called_once_with()
+
     def test_live_result_is_shown_before_session_finalization(self) -> None:
         active = Session(
             id="active-session",
