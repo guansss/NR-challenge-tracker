@@ -36,6 +36,16 @@ class LanguageConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "language must be one of"):
             self._load_with_language("fr")
 
+    def test_boolean_is_rejected_for_integer_settings(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["streak"]["target"] = True
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "streak.target"):
+                load_project_settings(Path(directory))
+
     def test_auto_uses_chinese_only_for_chinese_locales(self) -> None:
         self.assertEqual(resolve_language("auto", ["zh-CN"]), "zh")
         self.assertEqual(resolve_language("auto", ["zh-TW"]), "zh")

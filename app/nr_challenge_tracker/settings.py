@@ -7,10 +7,32 @@ from pathlib import Path
 import tempfile
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 import yaml
 
 
 WindowGeometry = tuple[int, int, int, int]
+
+
+class _WindowGeometry(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    x: int
+    y: int
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+
+
+class _HudSettings(BaseModel):
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    geometry: _WindowGeometry | None = None
+
+
+class _SettingsDocument(BaseModel):
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    hud: _HudSettings | None = None
 
 
 class SettingsRepository:
@@ -23,22 +45,14 @@ class SettingsRepository:
         settings = self._read_document()
         if settings is None:
             return None
-        hud = settings.get("hud")
-        geometry = hud.get("geometry") if isinstance(hud, dict) else None
-        if not isinstance(geometry, dict):
+        try:
+            document = _SettingsDocument.model_validate(settings)
+        except ValidationError:
             return None
-        values = (
-            geometry.get("x"),
-            geometry.get("y"),
-            geometry.get("width"),
-            geometry.get("height"),
-        )
-        if any(isinstance(value, bool) or not isinstance(value, int) for value in values):
+        geometry = document.hud.geometry if document.hud is not None else None
+        if geometry is None:
             return None
-        x, y, width, height = values
-        if width <= 0 or height <= 0:
-            return None
-        return x, y, width, height
+        return geometry.x, geometry.y, geometry.width, geometry.height
 
     def save_hud_geometry(
         self, x: int, y: int, width: int, height: int

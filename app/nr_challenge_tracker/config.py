@@ -4,9 +4,88 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+)
 import yaml
+
+
+NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+class _ConfigSection(BaseModel):
+    model_config = ConfigDict(extra="allow", strict=True)
+
+
+class _SamplingConfig(_ConfigSection):
+    idle_ms: int = Field(gt=0)
+    preparation_ms: int = Field(gt=0)
+    gameplay_ms: int = Field(gt=0)
+    result_ms: int = Field(gt=0)
+
+
+class _RecognitionConfig(_ConfigSection):
+    consecutive_confirmations: int = Field(gt=0)
+    sampling: _SamplingConfig
+
+
+class _CaptureConfig(_ConfigSection):
+    target_window: NonEmptyString
+
+
+class _StreakConfig(_ConfigSection):
+    target: int = Field(gt=0)
+    eligible_nightfarer: Literal["Executor"]
+    failure_rule: Literal["all_nonvictories"]
+    cap_at_target: bool
+
+
+class _ApiConfig(_ConfigSection):
+    host: NonEmptyString
+    port: int = Field(ge=1, le=65535)
+
+
+class _BilibiliConfig(_ConfigSection):
+    enabled: bool
+    room_id: int | None = None
+    title_template: NonEmptyString
+    title_max_characters: int = Field(gt=0)
+    polling_interval_seconds: int = Field(gt=0)
+
+
+class _HudConfig(_ConfigSection):
+    enabled: bool
+    opacity: float = Field(ge=0.1, le=1.0)
+    font_size: int = Field(gt=0)
+    width: int = Field(gt=0)
+    recent_sessions: int = Field(gt=0)
+    show_recent_sessions: bool
+
+
+class _ProjectConfig(_ConfigSection):
+    schema_version: Literal[1]
+    language: Literal["auto", "en", "zh"] = "auto"
+    paths: dict[str, str]
+    recognition: _RecognitionConfig
+    capture: _CaptureConfig
+    streak: _StreakConfig
+    api: _ApiConfig
+    bilibili: _BilibiliConfig
+    hud: _HudConfig
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def validate_language(cls, value: Any) -> Any:
+        if not isinstance(value, str) or value not in {"auto", "en", "zh"}:
+            raise ValueError("language must be one of: auto, en, zh")
+        return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,108 +117,30 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as error:
         raise ValueError(f"Could not load application configuration: {error}") from error
-    if not isinstance(data, dict) or data.get("schema_version") != 1:
-        raise ValueError("Unsupported or invalid application configuration")
-
     try:
-        capture = data["capture"]
-        recognition = data["recognition"]
-        sampling = recognition["sampling"]
-        streak = data["streak"]
-        api = data["api"]
-        bilibili = data["bilibili"]
-        hud = data["hud"]
-        target = _positive_int(streak["target"], "streak.target")
-        language = _language(data.get("language", "auto"))
-        room_id = bilibili.get("room_id")
-        if room_id is not None:
-            room_id = _positive_int(room_id, "bilibili.room_id")
-        settings = AppSettings(
-            language=language,
-            target_window=_nonempty_string(capture["target_window"], "capture.target_window"),
-            target=target,
-            idle_interval_ms=_positive_int(sampling["idle_ms"], "sampling.idle_ms"),
-            preparation_interval_ms=_positive_int(
-                sampling["preparation_ms"], "sampling.preparation_ms"
-            ),
-            gameplay_interval_ms=_positive_int(
-                sampling["gameplay_ms"], "sampling.gameplay_ms"
-            ),
-            result_interval_ms=_positive_int(
-                sampling["result_ms"], "sampling.result_ms"
-            ),
-            consecutive_confirmations=_positive_int(
-                recognition["consecutive_confirmations"],
-                "recognition.consecutive_confirmations",
-            ),
-            api_host=_nonempty_string(api["host"], "api.host"),
-            api_port=_bounded_int(api["port"], 1, 65535, "api.port"),
-            bilibili_enabled=_boolean(bilibili["enabled"], "bilibili.enabled"),
-            room_id=room_id,
-            title_template=_nonempty_string(
-                bilibili["title_template"], "bilibili.title_template"
-            ),
-            title_max_characters=_positive_int(
-                bilibili["title_max_characters"], "bilibili.title_max_characters"
-            ),
-            polling_interval_seconds=_positive_int(
-                bilibili["polling_interval_seconds"],
-                "bilibili.polling_interval_seconds",
-            ),
-            hud_opacity=_bounded_number(hud["opacity"], 0.1, 1.0, "hud.opacity"),
-            hud_font_size=_positive_int(hud["font_size"], "hud.font_size"),
-            hud_width=_positive_int(hud["width"], "hud.width"),
-            hud_recent_sessions=_positive_int(
-                hud["recent_sessions"], "hud.recent_sessions"
-            ),
-        )
-    except (KeyError, TypeError) as error:
-        raise ValueError(f"Missing or invalid application setting: {error}") from error
+        config = _ProjectConfig.model_validate(data)
+    except ValidationError as error:
+        raise ValueError(f"Invalid application configuration: {error}") from error
 
-    if streak.get("eligible_nightfarer") != "Executor":
-        raise ValueError("Only Executor is supported as the eligible Nightfarer")
-    if streak.get("failure_rule") != "all_nonvictories":
-        raise ValueError("Unsupported streak failure rule")
-    if not isinstance(data.get("paths"), dict) or not isinstance(recognition, dict):
-        raise ValueError("Configuration is missing paths or recognition settings")
+    settings = AppSettings(
+        language=config.language,
+        target_window=config.capture.target_window,
+        target=config.streak.target,
+        idle_interval_ms=config.recognition.sampling.idle_ms,
+        preparation_interval_ms=config.recognition.sampling.preparation_ms,
+        gameplay_interval_ms=config.recognition.sampling.gameplay_ms,
+        result_interval_ms=config.recognition.sampling.result_ms,
+        consecutive_confirmations=config.recognition.consecutive_confirmations,
+        api_host=config.api.host,
+        api_port=config.api.port,
+        bilibili_enabled=config.bilibili.enabled,
+        room_id=config.bilibili.room_id,
+        title_template=config.bilibili.title_template,
+        title_max_characters=config.bilibili.title_max_characters,
+        polling_interval_seconds=config.bilibili.polling_interval_seconds,
+        hud_opacity=config.hud.opacity,
+        hud_font_size=config.hud.font_size,
+        hud_width=config.hud.width,
+        hud_recent_sessions=config.hud.recent_sessions,
+    )
     return data, settings
-
-
-def _positive_int(value: Any, name: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise ValueError(f"{name} must be a positive integer")
-    return value
-
-
-def _bounded_int(value: Any, minimum: int, maximum: int, name: str) -> int:
-    number = _positive_int(value, name)
-    if not minimum <= number <= maximum:
-        raise ValueError(f"{name} must be between {minimum} and {maximum}")
-    return number
-
-
-def _nonempty_string(value: Any, name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{name} must be a non-empty string")
-    return value.strip()
-
-
-def _boolean(value: Any, name: str) -> bool:
-    if not isinstance(value, bool):
-        raise ValueError(f"{name} must be a boolean")
-    return value
-
-
-def _bounded_number(value: Any, minimum: float, maximum: float, name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f"{name} must be a number")
-    number = float(value)
-    if not minimum <= number <= maximum:
-        raise ValueError(f"{name} must be between {minimum} and {maximum}")
-    return number
-
-
-def _language(value: Any) -> str:
-    if not isinstance(value, str) or value not in {"auto", "en", "zh"}:
-        raise ValueError("language must be one of: auto, en, zh")
-    return value

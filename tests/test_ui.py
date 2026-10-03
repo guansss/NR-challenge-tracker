@@ -210,6 +210,19 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertEqual(restarted.geometry(), expected_geometry)
         restarted.deleteLater()
 
+    def test_invalid_saved_geometry_is_ignored(self) -> None:
+        invalid_documents = (
+            "hud:\n  geometry: {x: true, y: 10, width: 320, height: 240}\n",
+            "hud:\n  geometry: {x: 10, y: 10, width: 0, height: 240}\n",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "settings.yaml"
+            repository = SettingsRepository(settings_path)
+            for document in invalid_documents:
+                with self.subTest(document=document):
+                    settings_path.write_text(document, encoding="utf-8")
+                    self.assertIsNone(repository.load_hud_geometry())
+
     def test_chinese_localizes_hud_and_monitor_status(self) -> None:
         sessions = Mock(
             snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
