@@ -82,6 +82,7 @@ class RecognitionMonitor:
         self._sample_interval_ms = idle_interval_ms
         self._last_sample = 0.0
         self._status = "monitor.stopped"
+        self._status_values: dict[str, str] = {}
         self._window_handle: int | None = None
         self._window_unavailable = False
         self._capture_ended = threading.Event()
@@ -493,12 +494,15 @@ class RecognitionMonitor:
         screen_entry: str | None = None,
     ) -> None:
         with self._state_lock:
+            if status_key != self._status or status_values is not None:
+                self._status_values = status_values or {}
             self._status = status_key
+            published_status_values = self._status_values.copy()
         self.on_update(
             {
                 "snapshot": self.sessions.snapshot,
                 "recognition": recognition,
-                "status_values": status_values or {},
+                "status_values": published_status_values,
                 "screen_entry": screen_entry,
             },
             status_key,

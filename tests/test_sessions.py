@@ -9,27 +9,32 @@ from app.nr_challenge_tracker.sessions import SessionService, SessionTransitionE
 
 
 START = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+ELIGIBLE_NIGHTFARER = "recluse"
 
 
 class SessionServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.history_path = Path(self.temp_dir.name) / "history.yaml"
-        self.service = SessionService(HistoryRepository(self.history_path))
+        self.service = SessionService(
+            HistoryRepository(
+                self.history_path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
+            )
+        )
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def start_executor(self):
+    def start_eligible_session(self):
         return self.service.start_session(
-            nightfarer="executor",
+            nightfarer=ELIGIBLE_NIGHTFARER,
             nightlord_name="harmonia",
             hidden_nightlord=False,
             started_at=START,
         )
 
     def test_result_is_finalized_once_and_persisted(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
 
         finalized = self.service.finalize_result(
             session.id,
@@ -49,7 +54,7 @@ class SessionServiceTests(unittest.TestCase):
             )
 
     def test_identity_conflict_is_preserved_for_review_without_streak_effect(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
 
         result = self.service.finalize_result(
             session.id,
@@ -66,7 +71,7 @@ class SessionServiceTests(unittest.TestCase):
 
     def test_hidden_nightlord_without_result_identity_stays_unresolved(self) -> None:
         session = self.service.start_session(
-            nightfarer="executor",
+            nightfarer=ELIGIBLE_NIGHTFARER,
             nightlord_name=None,
             hidden_nightlord=True,
             started_at=START,
@@ -83,7 +88,7 @@ class SessionServiceTests(unittest.TestCase):
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
     def test_interruption_and_resume_do_not_change_streak(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
 
         self.service.interrupt(session.id)
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
@@ -91,7 +96,7 @@ class SessionServiceTests(unittest.TestCase):
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
     def test_preparation_selection_updates_active_session(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
 
         updated = self.service.update_preparation(
             session.id,
@@ -105,7 +110,7 @@ class SessionServiceTests(unittest.TestCase):
         self.assertEqual(self.service.snapshot.sessions[0], updated)
 
     def test_manual_resolution_requires_explicit_outcome(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
         unresolved = self.service.finalize_result(
             session.id,
             progress=None,
@@ -115,7 +120,7 @@ class SessionServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(SessionTransitionError, "explicit outcome"):
             self.service.resolve_session(
                 session.id,
-                nightfarer="executor",
+                nightfarer=ELIGIBLE_NIGHTFARER,
                 nightlord_name="harmonia",
                 variant=NightlordVariant.UNKNOWN,
                 progress=Progress.UNKNOWN,
@@ -124,7 +129,7 @@ class SessionServiceTests(unittest.TestCase):
 
         resolved = self.service.resolve_session(
             session.id,
-            nightfarer="executor",
+            nightfarer=ELIGIBLE_NIGHTFARER,
             nightlord_name="harmonia",
             variant=NightlordVariant.UNKNOWN,
             progress=Progress.DAY_3_VICTORY,
@@ -135,7 +140,10 @@ class SessionServiceTests(unittest.TestCase):
 
     def test_everdark_variant_must_exist_in_catalog(self) -> None:
         validated_service = SessionService(
-            HistoryRepository(Path(self.temp_dir.name) / "validated.yaml"),
+            HistoryRepository(
+                Path(self.temp_dir.name) / "validated.yaml",
+                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            ),
             everdark_nightlords={"harmonia"},
         )
         session = validated_service.start_session(
@@ -155,7 +163,7 @@ class SessionServiceTests(unittest.TestCase):
             )
 
     def test_discard_recomputes_derived_streak(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
         self.service.finalize_result(
             session.id,
             progress=Progress.DAY_3_VICTORY,
@@ -169,15 +177,19 @@ class SessionServiceTests(unittest.TestCase):
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
     def test_second_active_session_is_rejected(self) -> None:
-        self.start_executor()
+        self.start_eligible_session()
 
         with self.assertRaisesRegex(SessionTransitionError, "already exists"):
-            self.start_executor()
+            self.start_eligible_session()
 
     def test_restart_marks_active_session_interrupted_without_streak_effect(self) -> None:
-        session = self.start_executor()
+        session = self.start_eligible_session()
 
-        restarted = SessionService(HistoryRepository(self.history_path))
+        restarted = SessionService(
+            HistoryRepository(
+                self.history_path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
+            )
+        )
 
         recovered = restarted.snapshot.sessions[0]
         self.assertEqual(recovered.id, session.id)

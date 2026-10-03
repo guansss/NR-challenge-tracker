@@ -12,6 +12,12 @@ from app.nr_challenge_tracker.i18n import CATALOGS, resolve_language, tr
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _use_workspace_manifest(config: dict) -> None:
+    config["paths"]["template_manifest"] = str(
+        ROOT / config["paths"]["template_manifest"]
+    )
+
+
 class LanguageConfigTests(unittest.TestCase):
     def _load_with_language(self, language: str | None):
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
@@ -19,6 +25,7 @@ class LanguageConfigTests(unittest.TestCase):
             config.pop("language", None)
         else:
             config["language"] = language
+        _use_workspace_manifest(config)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "config.yaml"
             path.write_text(yaml.safe_dump(config), encoding="utf-8")
@@ -32,6 +39,29 @@ class LanguageConfigTests(unittest.TestCase):
             with self.subTest(language=language):
                 self.assertEqual(self._load_with_language(language).language, language)
 
+    def test_eligible_nightfarer_is_loaded_from_config(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["streak"]["eligible_nightfarer"] = "recluse"
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory))[1]
+
+        self.assertEqual(settings.eligible_nightfarer, "recluse")
+
+    def test_eligible_nightfarer_rejects_display_names(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["streak"]["eligible_nightfarer"] = "Recluse"
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "eligible_nightfarer"):
+                load_project_settings(Path(directory))
+
     def test_unsupported_language_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "language must be one of"):
             self._load_with_language("fr")
@@ -39,6 +69,7 @@ class LanguageConfigTests(unittest.TestCase):
     def test_boolean_is_rejected_for_integer_settings(self) -> None:
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
         config["streak"]["target"] = True
+        _use_workspace_manifest(config)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "config.yaml"
             path.write_text(yaml.safe_dump(config), encoding="utf-8")

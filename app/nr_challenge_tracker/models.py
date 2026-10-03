@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
-
 class SessionStatus(str, Enum):
     ACTIVE = "active"
     AWAITING_RESULT = "awaiting_result"
@@ -81,12 +80,11 @@ class Session:
         if not isinstance(self.nightlord_variant, NightlordVariant):
             raise TypeError("Nightlord variant must be a NightlordVariant")
 
-    @property
-    def counts_for_streak(self) -> bool:
-        """Whether this finalized Executor record has a known final outcome."""
+    def counts_for_streak(self, eligible_nightfarer: str) -> bool:
+        """Whether this record counts for the configured Nightfarer streak."""
         return (
             self.status is SessionStatus.COMPLETED
-            and (self.nightfarer or "").strip().casefold() == "executor"
+            and self.nightfarer == eligible_nightfarer
             and self.progress in {
                 Progress.DAY_1,
                 Progress.DAY_2,

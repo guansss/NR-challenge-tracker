@@ -38,11 +38,18 @@ def default_history_path(project_root: Path) -> Path:
 class HistoryRepository:
     """Load and atomically save session records and their derived projection."""
 
-    def __init__(self, path: Path, default_target: int = DEFAULT_TARGET) -> None:
+    def __init__(
+        self,
+        path: Path,
+        default_target: int = DEFAULT_TARGET,
+        *,
+        eligible_nightfarer: str,
+    ) -> None:
         if isinstance(default_target, bool) or default_target <= 0:
             raise ValueError("History target must be a positive integer")
         self.path = path
         self.default_target = default_target
+        self.eligible_nightfarer = eligible_nightfarer
         self._lock = RLock()
 
     def load(self) -> HistorySnapshot:
@@ -71,7 +78,11 @@ class HistoryRepository:
         self, sessions: tuple[Session, ...], target: int
     ) -> HistorySnapshot:
         try:
-            stats = calculate_streak(sessions, target=target)
+            stats = calculate_streak(
+                sessions,
+                target=target,
+                eligible_nightfarer=self.eligible_nightfarer,
+            )
         except (TypeError, ValueError) as error:
             raise HistoryError(f"Invalid session history: {error}") from error
         return HistorySnapshot(sessions=sessions, stats=stats)
@@ -151,10 +162,14 @@ class HistoryRepository:
                 "target": snapshot.stats.target,
                 "current_streak": snapshot.stats.current_streak,
                 "best_streak": snapshot.stats.best_streak,
-                "total_executor_victories": snapshot.stats.total_executor_victories,
+                "total_eligible_victories": snapshot.stats.total_eligible_victories,
             },
             "sessions": [
-                _session_to_record(session, snapshot.stats.streak_numbers)
+                _session_to_record(
+                    session,
+                    snapshot.stats.streak_numbers,
+                    self.eligible_nightfarer,
+                )
                 for session in snapshot.sessions
             ],
         }
@@ -195,7 +210,9 @@ def _parse_timestamp(value: Any, field: str) -> datetime:
 
 
 def _session_to_record(
-    session: Session, streak_numbers: dict[str, int]
+    session: Session,
+    streak_numbers: dict[str, int],
+    eligible_nightfarer: str,
 ) -> dict[str, Any]:
     return {
         "id": session.id,
@@ -211,6 +228,6 @@ def _session_to_record(
         "review_reason": session.review_reason,
         "progress": session.progress.value if session.progress else None,
         "status": session.status.value,
-        "counts_for_streak": session.counts_for_streak,
+        "counts_for_streak": session.counts_for_streak(eligible_nightfarer),
         "streak_number": streak_numbers.get(session.id),
     }

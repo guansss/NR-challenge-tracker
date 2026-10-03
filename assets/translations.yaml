@@ -184,6 +184,9 @@ hud:
   streak:
     en: "{current} / {target}  |  Best {best}"
     zh: "{current} / {target}  |  最佳 {best}"
+  goal:
+    en: "Goal: {nightfarer} streak"
+    zh: "目标：{nightfarer}连胜"
   title_sync:
     en: "Title sync: {status}"
     zh: "直播标题同步：{status}"

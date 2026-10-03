@@ -13,28 +13,34 @@ from .models import Progress, Session
 class StreakStats:
     current_streak: int
     best_streak: int
-    total_executor_victories: int
+    total_eligible_victories: int
     target: int
     streak_numbers: Mapping[str, int]
 
 
 def calculate_streak(
-    sessions: Iterable[Session], target: int = 100
+    sessions: Iterable[Session],
+    target: int = 100,
+    *,
+    eligible_nightfarer: str,
 ) -> StreakStats:
     """Recompute challenge statistics and historical victory labels.
 
-    Completed Executor outcomes are applied in end-time order. Unknown,
-    unresolved, interrupted, and discarded sessions have no effect.
+    Completed outcomes for the eligible Nightfarer are applied in end-time
+    order. Unknown, unresolved, interrupted, and discarded sessions have no effect.
     """
     if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
         raise ValueError("Streak target must be a positive integer")
-
     session_list = list(sessions)
     session_ids = [session.id for session in session_list]
     if len(session_ids) != len(set(session_ids)):
         raise ValueError("Session ids must be unique")
 
-    eligible = [session for session in session_list if session.counts_for_streak]
+    eligible = [
+        session
+        for session in session_list
+        if session.counts_for_streak(eligible_nightfarer)
+    ]
     eligible.sort(
         key=lambda session: (
             session.ended_at.astimezone(timezone.utc),
@@ -59,7 +65,7 @@ def calculate_streak(
     return StreakStats(
         current_streak=min(current, target),
         best_streak=best,
-        total_executor_victories=total_victories,
+        total_eligible_victories=total_victories,
         target=target,
         streak_numbers=streak_numbers,
     )

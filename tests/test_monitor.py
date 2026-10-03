@@ -10,6 +10,8 @@ from app.nr_challenge_tracker.models import NightlordVariant, Progress
 from app.nr_challenge_tracker.monitor import RecognitionMonitor, ScreenDebouncer
 from app.nr_challenge_tracker.sessions import SessionService
 
+ELIGIBLE_NIGHTFARER = "executor"
+
 
 class FakeRecognitionEngine:
     manifest = {
@@ -67,6 +69,33 @@ class ScreenDebouncerTests(unittest.TestCase):
 
 
 class ScreenEntryEventTests(unittest.TestCase):
+    def test_repeated_status_update_preserves_format_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            updates: list[tuple[dict[str, object], str]] = []
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine([]),
+                sessions,
+                "Nightreign",
+                lambda payload, status: updates.append((payload, status)),
+            )
+
+            monitor._publish(
+                "monitor.monitoring_window",
+                status_values={"title": "ELDEN RING NIGHTREIGN"},
+            )
+            monitor._publish("monitor.monitoring_window")
+
+        self.assertEqual(
+            updates[-1][0]["status_values"],
+            {"title": "ELDEN RING NIGHTREIGN"},
+        )
+
     def test_monitor_publishes_one_event_per_confirmed_screen_entry(self) -> None:
         results = [
             {"screen": "preparation"},
@@ -79,7 +108,10 @@ class ScreenEntryEventTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             sessions = SessionService(
-                HistoryRepository(Path(temp_dir) / "history.yaml")
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
             )
             updates: list[dict[str, object]] = []
             monitor = RecognitionMonitor(
@@ -109,7 +141,10 @@ class PreparationMonitorTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             sessions = SessionService(
-                HistoryRepository(Path(temp_dir) / "history.yaml")
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
             )
             monitor = RecognitionMonitor(
                 FakeRecognitionEngine(results),
@@ -161,7 +196,10 @@ class ResultMonitorTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             sessions = SessionService(
-                HistoryRepository(Path(temp_dir) / "history.yaml")
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
             )
             active = sessions.start_session(
                 nightfarer="executor",
@@ -212,7 +250,12 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             debug_dir = root / "debug" / "screenshots"
-            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            sessions = SessionService(
+                HistoryRepository(
+                    root / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
             monitor = RecognitionMonitor(
                 FakeRecognitionEngine(results),
                 sessions,
@@ -255,7 +298,12 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             start = datetime.now(timezone.utc) - timedelta(seconds=10)
-            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            sessions = SessionService(
+                HistoryRepository(
+                    root / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
             previous = sessions.start_session(
                 nightfarer="executor",
                 nightlord_name="adel",
@@ -307,7 +355,12 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
             root = Path(temp_dir)
             blocked_path = root / "not-a-directory"
             blocked_path.write_text("blocked", encoding="utf-8")
-            sessions = SessionService(HistoryRepository(root / "history.yaml"))
+            sessions = SessionService(
+                HistoryRepository(
+                    root / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
             updates = []
             monitor = RecognitionMonitor(
                 FakeRecognitionEngine([result, result]),

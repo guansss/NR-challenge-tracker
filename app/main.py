@@ -37,7 +37,11 @@ def main() -> int:
         engine = RecognitionEngine(ROOT, project_config)
         history_path = default_history_path(ROOT)
         sessions = SessionService(
-            HistoryRepository(history_path, default_target=settings.target),
+            HistoryRepository(
+                history_path,
+                default_target=settings.target,
+                eligible_nightfarer=settings.eligible_nightfarer,
+            ),
             everdark_nightlords={
                 entry["id"]
                 for entry in engine.manifest["nightlords"]
@@ -80,6 +84,7 @@ def main() -> int:
             width=settings.hud_width,
             recent_sessions=settings.hud_recent_sessions,
             language=language,
+            eligible_nightfarer=settings.eligible_nightfarer,
             initial_geometry=settings_repository.load_hud_geometry(),
         )
         window.geometry_saved.connect(settings_repository.save_hud_geometry)

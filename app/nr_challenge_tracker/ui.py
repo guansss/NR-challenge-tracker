@@ -9,11 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QDateTime, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QFont, QFontMetrics, QMouseEvent
+from PySide6.QtGui import QFont, QMouseEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QBoxLayout,
     QComboBox,
     QDateTimeEdit,
     QDialog,
@@ -27,7 +28,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSizeGrip,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -223,6 +223,7 @@ class TrackerWindow(QMainWindow):
         width: int = 420,
         recent_sessions: int = 10,
         language: str = "en",
+        eligible_nightfarer: str,
         initial_geometry: tuple[int, int, int, int] | None = None,
     ) -> None:
         super().__init__()
@@ -233,6 +234,7 @@ class TrackerWindow(QMainWindow):
         self.nightfarers = nightfarers
         self.nightlords = nightlords
         self.recent_sessions = recent_sessions
+        self._font_size = font_size
         self._drag_offset = None
         self._mouse_passthrough = False
         self._hotkey_registered = False
@@ -270,7 +272,7 @@ class TrackerWindow(QMainWindow):
         panel.setObjectName("panel")
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(6)
+        layout.setSpacing(round(font_size * 0.8))
 
         header = QHBoxLayout()
         self.heading = QLabel(tr(language, "hud.heading"))
@@ -278,30 +280,48 @@ class TrackerWindow(QMainWindow):
         self.heading.setStyleSheet("font-weight: 700; color: #b5d6c1;")
         close_button = QPushButton("×")
         close_button.setFont(panel_font)
-        close_button.setFixedWidth(28)
+        close_button.setFixedSize(28, 28)
         close_button.clicked.connect(self.close)
         header.addWidget(self.heading)
         header.addStretch(1)
         header.addWidget(close_button)
         layout.addLayout(header)
 
+        self.goal_label = QLabel(
+            tr(
+                language,
+                "hud.goal",
+                nightfarer=localized_name(language, "nightfarers", eligible_nightfarer),
+            )
+        )
+        goal_font = QFont(panel_font)
+        goal_font.setPixelSize(round(font_size * 0.9))
+        self.goal_label.setFont(goal_font)
         self.current_label = QLabel(tr(language, "hud.no_active_session"))
         self.current_label.setWordWrap(True)
         current_font = QFont(panel_font)
-        current_font.setPixelSize(int(font_size * 1.1))
         current_font.setWeight(QFont.Weight.DemiBold)
         self.current_label.setFont(current_font)
         self.streak_label = QLabel("0 / 100")
         streak_font = QFont(panel_font)
-        streak_font.setPixelSize(int(font_size * 1.8))
+        streak_font.setPixelSize(round(font_size * 2))
         self.streak_label.setFont(streak_font)
         self.streak_label.setStyleSheet("color: #9ed7ae;")
+        status_panel = QHBoxLayout()
+        status_panel.setDirection(QBoxLayout.Direction.TopToBottom)
+        status_panel.setSpacing(round(font_size * 0.2))
+        status_font = QFont(panel_font)
+        status_font.setPixelSize(round(font_size * 0.8))
         self.monitor_label = QLabel(tr(language, "monitor.starting"))
-        self.monitor_label.setFont(panel_font)
+        self.monitor_label.setFont(status_font)
+        self.monitor_label.setStyleSheet("color: #aaaaaa;")
         self.sync_label = QLabel(
             tr(language, "hud.title_sync", status=tr(language, "sync.pending"))
         )
-        self.sync_label.setFont(panel_font)
+        self.sync_label.setFont(status_font)
+        self.sync_label.setStyleSheet("color: #aaaaaa;")
+        status_panel.addWidget(self.monitor_label)
+        status_panel.addWidget(self.sync_label)
         self.history = ToggleSelectionListWidget()
         self.history.setFont(panel_font)
         self.history.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -309,11 +329,11 @@ class TrackerWindow(QMainWindow):
             QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.history.setMinimumHeight(150)
+        layout.addWidget(self.goal_label)
         layout.addWidget(self.streak_label)
         layout.addWidget(self.current_label)
         layout.addWidget(self.history, 1)
-        layout.addWidget(self.monitor_label)
-        layout.addWidget(self.sync_label)
+        layout.addLayout(status_panel)
 
         actions = QHBoxLayout()
         self.pause_button = QPushButton(tr(language, "actions.pause"))
@@ -322,24 +342,15 @@ class TrackerWindow(QMainWindow):
         self.lock_button = QPushButton(tr(language, "actions.lock"))
         self.lock_button.setObjectName("lockButton")
         self.lock_button.setProperty("locked", False)
+        button_font = QFont(panel_font)
+        button_font.setPixelSize(round(font_size * 0.8))
         for button in (
             self.pause_button,
             self.skip_button,
             self.resolve_button,
             self.lock_button,
         ):
-            button.setFont(panel_font)
-            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-            button_size = button.sizeHint()
-            if button is self.lock_button:
-                locked_text_width = (
-                    QFontMetrics(panel_font).horizontalAdvance(
-                        tr(language, "actions.locked")
-                    )
-                    + 20
-                )
-                button_size.setWidth(max(button_size.width(), locked_text_width))
-            button.setFixedSize(button_size)
+            button.setFont(button_font)
         self.lock_button.setToolTip(tr(language, "actions.lock_tooltip"))
         self.pause_button.clicked.connect(self.toggle_pause)
         self.skip_button.clicked.connect(self.skip_active)
@@ -448,6 +459,9 @@ class TrackerWindow(QMainWindow):
         selected_id = (
             selected_item.data(Qt.ItemDataRole.UserRole) if selected_item else None
         )
+        scroll_bar = self.history.verticalScrollBar()
+        scroll_position = scroll_bar.value()
+        was_at_bottom = scroll_position == scroll_bar.maximum()
         self.history.clear()
         recent_sessions = sorted(
             (
@@ -460,11 +474,16 @@ class TrackerWindow(QMainWindow):
             reverse=True,
         )[: self.recent_sessions]
         for session in recent_sessions:
-            item = QListWidgetItem(_format_session(session, stats, self.language))
+            row = self._format_session(session, stats, self.history)
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, session.id)
             self.history.addItem(item)
+            item.setSizeHint(row.sizeHint())
+            self.history.setItemWidget(item, row)
             if session.id == selected_id:
                 self.history.setCurrentItem(item)
+        self.history.doItemsLayout()
+        scroll_bar.setValue(scroll_bar.maximum() if was_at_bottom else scroll_position)
 
     def _format_live_result(self, recognition: dict[str, Any]) -> str:
         nightlord_id = recognition.get("nightlord")
@@ -500,6 +519,69 @@ class TrackerWindow(QMainWindow):
             variant=variant_label,
             outcome=outcome_label,
         )
+
+    def _format_session(
+        self,
+        session: Session,
+        stats: StreakStats,
+        parent: QWidget,
+    ) -> QWidget:
+        streak_number = stats.streak_numbers.get(session.id)
+        number = f"#{streak_number}" if streak_number is not None else None
+        nightlord = (
+            localized_name(self.language, "nightlords", session.nightlord_name)
+            if session.nightlord_name
+            else tr(self.language, "session.unknown_nightlord")
+        )
+        if session.nightlord_variant is NightlordVariant.EVERDARK:
+            nightlord = tr(
+                self.language, "variant.everdark_nightlord", nightlord=nightlord
+            )
+        elif session.nightlord_variant is NightlordVariant.UNKNOWN:
+            nightlord = f"{nightlord} (?)"
+        outcome = {
+            Progress.DAY_1: tr(self.language, "outcome.day_1"),
+            Progress.DAY_2: tr(self.language, "outcome.day_2"),
+            Progress.DAY_3: tr(self.language, "outcome.day_3"),
+            Progress.DAY_3_VICTORY: tr(self.language, "outcome.victory"),
+        }.get(session.progress, tr(self.language, "common.unknown"))
+        timestamp_source = session.ended_at or session.started_at
+        timestamp = timestamp_source.astimezone().strftime("%Y/%m/%d %H:%M:%S")
+        nightfarer = (
+            localized_name(self.language, "nightfarers", session.nightfarer)
+            if session.nightfarer
+            else tr(self.language, "common.unknown")
+        )
+        description = f"{nightfarer} - {nightlord} - {outcome}"
+
+        row = QWidget(parent)
+        row_font = parent.font()
+        row.setFont(row_font)
+        layout = QVBoxLayout(row)
+        layout.setContentsMargins(
+            0, round(self._font_size * 0.5), 0, round(self._font_size * 0.5)
+        )
+        layout.setSpacing(round(self._font_size * 0.3))
+
+        first_line_layout = QHBoxLayout()
+        first_line_layout.setSpacing(round(self._font_size * 0.5))
+        if number is not None:
+            number_label = QLabel(number, row)
+            number_font = QFont(row_font)
+            number_font.setPixelSize(round(self._font_size * 1.1))
+            number_label.setFont(number_font)
+            number_label.setStyleSheet("font-weight: 700; color: #b5d6c1;")
+            first_line_layout.addWidget(number_label)
+        description_label = QLabel(description, row)
+        description_label.setFont(row_font)
+        first_line_layout.addWidget(description_label, 1)
+        layout.addLayout(first_line_layout)
+        timestamp_label = QLabel(timestamp, row)
+        timestamp_font = QFont(row_font)
+        timestamp_label.setFont(timestamp_font)
+        timestamp_label.setStyleSheet("color: #aaaaaa;")
+        layout.addWidget(timestamp_label)
+        return row
 
     def toggle_mouse_passthrough(self) -> None:
         if self._mouse_passthrough:
@@ -707,31 +789,3 @@ class TrackerWindow(QMainWindow):
         application = QApplication.instance()
         if application is not None:
             application.quit()
-
-
-def _format_session(session: Session, stats: StreakStats, language: str = "en") -> str:
-    streak_number = stats.streak_numbers.get(session.id)
-    number = f"#{streak_number} " if streak_number is not None else ""
-    nightlord = (
-        localized_name(language, "nightlords", session.nightlord_name)
-        if session.nightlord_name
-        else tr(language, "session.unknown_nightlord")
-    )
-    if session.nightlord_variant is NightlordVariant.EVERDARK:
-        nightlord = tr(language, "variant.everdark_nightlord", nightlord=nightlord)
-    elif session.nightlord_variant is NightlordVariant.UNKNOWN:
-        nightlord = f"{nightlord} (?)"
-    outcome = {
-        Progress.DAY_1: tr(language, "outcome.day_1"),
-        Progress.DAY_2: tr(language, "outcome.day_2"),
-        Progress.DAY_3: tr(language, "outcome.day_3"),
-        Progress.DAY_3_VICTORY: tr(language, "outcome.victory"),
-    }.get(session.progress, tr(language, "common.unknown"))
-    timestamp_source = session.ended_at or session.started_at
-    timestamp = timestamp_source.astimezone().strftime("%Y/%m/%d %H:%M:%S")
-    nightfarer = (
-        localized_name(language, "nightfarers", session.nightfarer)
-        if session.nightfarer
-        else tr(language, "common.unknown")
-    )
-    return f"{number}{nightfarer} - {nightlord} - {outcome}\n{timestamp}"

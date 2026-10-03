@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import yaml
@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
+from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QPushButton, QWidget
 
 from app.nr_challenge_tracker.history import HistorySnapshot
 from app.nr_challenge_tracker.models import (
@@ -22,7 +22,16 @@ from app.nr_challenge_tracker.models import (
 )
 from app.nr_challenge_tracker.settings import SettingsRepository
 from app.nr_challenge_tracker.streak import calculate_streak
-from app.nr_challenge_tracker.ui import ResolveSessionDialog, TrackerWindow
+from app.nr_challenge_tracker.ui import (
+    ResolveSessionDialog,
+    TrackerWindow,
+)
+
+ELIGIBLE_NIGHTFARER = "executor"
+
+
+def _calculate_test_streak(sessions):
+    return calculate_streak(sessions, eligible_nightfarer=ELIGIBLE_NIGHTFARER)
 
 
 class ResolveSessionDialogTests(unittest.TestCase):
@@ -45,7 +54,10 @@ class ResolveSessionDialogTests(unittest.TestCase):
 
         self.assertIsNone(dialog.progress.currentData())
         self.assertEqual(
-            [dialog.nightlord.itemData(index) for index in range(dialog.nightlord.count())],
+            [
+                dialog.nightlord.itemData(index)
+                for index in range(dialog.nightlord.count())
+            ],
             [None, *nightlords],
         )
         self.assertEqual(dialog.nightlord.currentData(), "caligo")
@@ -139,16 +151,24 @@ class TrackerWindowTests(unittest.TestCase):
 
     def test_screen_entry_events_play_the_matching_cues(self) -> None:
         sessions = Mock(
-            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
         )
         title_state = Mock()
         title_state.update.return_value = {
             "sync_status": "sync.disabled",
             "sync_message": "",
         }
-        window = TrackerWindow(sessions, Mock(), title_state, [], [])
-
+        monitor = Mock(target_window="Nightreign")
         with patch("app.nr_challenge_tracker.ui._play_screen_cue") as play_cue:
+            window = TrackerWindow(
+                sessions,
+                monitor,
+                title_state,
+                [],
+                [],
+                eligible_nightfarer="recluse",
+            )
+            self.assertEqual(window.goal_label.text(), "Goal: Recluse")
             payload = {"status_values": {"title": "Nightreign"}}
             window.monitor_update(
                 {"screen_entry": "preparation", **payload}, "monitor.monitoring_window"
@@ -156,8 +176,10 @@ class TrackerWindowTests(unittest.TestCase):
             window.monitor_update(
                 {"screen_entry": "result", **payload}, "monitor.monitoring_window"
             )
+            window.monitor_update({}, "monitor.monitoring_window")
             self.application.processEvents()
 
+        self.assertEqual(window.monitor_label.text(), "Monitoring Nightreign")
         self.assertEqual(
             play_cue.call_args_list,
             [unittest.mock.call("preparation"), unittest.mock.call("result")],
@@ -166,7 +188,7 @@ class TrackerWindowTests(unittest.TestCase):
 
     def test_window_geometry_is_restored_after_close(self) -> None:
         sessions = Mock(
-            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
         )
         title_state = Mock()
         title_state.update.return_value = {
@@ -184,6 +206,7 @@ class TrackerWindowTests(unittest.TestCase):
                 title_state,
                 [],
                 [],
+                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
                 initial_geometry=settings_repository.load_hud_geometry(),
             )
             window.geometry_saved.connect(settings_repository.save_hud_geometry)
@@ -199,6 +222,7 @@ class TrackerWindowTests(unittest.TestCase):
                 title_state,
                 [],
                 [],
+                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
                 initial_geometry=settings_repository.load_hud_geometry(),
             )
 
@@ -225,7 +249,7 @@ class TrackerWindowTests(unittest.TestCase):
 
     def test_chinese_localizes_hud_and_monitor_status(self) -> None:
         sessions = Mock(
-            snapshot=HistorySnapshot(sessions=(), stats=calculate_streak(()))
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
         )
         title_state = Mock()
         title_state.update.return_value = {
@@ -233,11 +257,18 @@ class TrackerWindowTests(unittest.TestCase):
             "sync_message": "",
         }
         window = TrackerWindow(
-            sessions, Mock(), title_state, [], [], language="zh"
+            sessions,
+            Mock(),
+            title_state,
+            [],
+            [],
+            language="zh",
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
         )
 
         self.assertEqual(window.windowTitle(), "黑夜君临挑战追踪器")
         self.assertEqual(window.pause_button.text(), "暂停")
+        self.assertEqual(window.goal_label.text(), "目标：执行者")
         self.assertEqual(window.current_label.text(), "没有进行中的场次")
         self.assertEqual(window.sync_label.text(), "直播标题同步：已禁用")
         window.monitor_update({}, "monitor.window_unavailable")
@@ -276,7 +307,7 @@ class TrackerWindowTests(unittest.TestCase):
             status=SessionStatus.ACTIVE,
         )
         snapshot = HistorySnapshot(
-            sessions=(active,), stats=calculate_streak((active,))
+            sessions=(active,), stats=_calculate_test_streak((active,))
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
@@ -287,7 +318,12 @@ class TrackerWindowTests(unittest.TestCase):
         }
 
         window = TrackerWindow(
-            sessions, monitor, title_state, ["executor"], ["libra"]
+            sessions,
+            monitor,
+            title_state,
+            ["executor"],
+            ["libra"],
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
         )
         window.monitor_update(
             {
@@ -329,7 +365,8 @@ class TrackerWindowTests(unittest.TestCase):
             status=SessionStatus.COMPLETED,
         )
         snapshot = HistorySnapshot(
-            sessions=(completed, active), stats=calculate_streak((completed, active))
+            sessions=(completed, active),
+            stats=_calculate_test_streak((completed, active)),
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
@@ -346,12 +383,13 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor", "wylder"],
             ["adel", "caligo"],
             language="zh",
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
         )
 
         self.assertEqual(window.current_label.text(), "当前：执行者 - 冰龙")
-        self.assertIn(
-            "追踪者 - 永夜大嘴 - 最终日", window.history.item(0).text()
-        )
+        labels = window.history.itemWidget(window.history.item(0)).findChildren(QLabel)
+        self.assertIn("追踪者 - 永夜大嘴 - 最终日", [label.text() for label in labels])
+        self.assertEqual(window.history.item(0).text(), "")
         window.deleteLater()
 
     def test_history_respects_configured_recent_session_limit(self) -> None:
@@ -365,7 +403,8 @@ class TrackerWindowTests(unittest.TestCase):
             for index in range(4)
         ]
         snapshot = HistorySnapshot(
-            sessions=tuple(sessions_list), stats=calculate_streak(tuple(sessions_list))
+            sessions=tuple(sessions_list),
+            stats=_calculate_test_streak(tuple(sessions_list)),
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
@@ -382,6 +421,7 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor"],
             ["caligo"],
             recent_sessions=2,
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
         )
 
         self.assertEqual(window.history.count(), 2)
@@ -392,6 +432,55 @@ class TrackerWindowTests(unittest.TestCase):
             ],
             ["session-3", "session-2"],
         )
+        window.deleteLater()
+
+    def test_history_refresh_preserves_scroll_position(self) -> None:
+        sessions_list = tuple(
+            Session(
+                id=f"session-{index}",
+                started_at=datetime(2026, 10, index + 1, tzinfo=timezone.utc),
+                ended_at=datetime(2026, 10, index + 1, 1, tzinfo=timezone.utc),
+                status=SessionStatus.COMPLETED,
+            )
+            for index in range(12)
+        )
+        sessions = Mock(
+            snapshot=HistorySnapshot(
+                sessions=sessions_list, stats=_calculate_test_streak(sessions_list)
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        window = TrackerWindow(
+            sessions,
+            Mock(),
+            title_state,
+            [],
+            [],
+            recent_sessions=12,
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            initial_geometry=(0, 0, 420, 420),
+        )
+        window.show()
+        self.application.processEvents()
+        scroll_bar = window.history.verticalScrollBar()
+        self.assertGreater(scroll_bar.maximum(), 0)
+        scroll_bar.setValue(scroll_bar.maximum() // 2)
+        middle_position = scroll_bar.value()
+
+        window.refresh()
+        self.application.processEvents()
+
+        self.assertEqual(scroll_bar.value(), middle_position)
+        scroll_bar.setValue(scroll_bar.maximum())
+
+        window.refresh()
+        self.application.processEvents()
+
+        self.assertEqual(scroll_bar.value(), scroll_bar.maximum())
         window.deleteLater()
 
     def test_history_shows_unresolved_sessions_but_not_discarded_sessions(self) -> None:
@@ -419,7 +508,7 @@ class TrackerWindowTests(unittest.TestCase):
         )
         snapshot = HistorySnapshot(
             sessions=(unresolved, active, discarded),
-            stats=calculate_streak((unresolved, active, discarded)),
+            stats=_calculate_test_streak((unresolved, active, discarded)),
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
@@ -436,6 +525,7 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor"],
             ["caligo"],
             font_size=18,
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
         )
         window._refresh_timer.stop()
         self.assertEqual(window.current_label.text(), "Current: Executor - Caligo")
@@ -443,24 +533,33 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertEqual(
             window.history.item(0).data(Qt.ItemDataRole.UserRole), "needs-resolution"
         )
+        labels = window.history.itemWidget(window.history.item(0)).findChildren(QLabel)
+        label_texts = [label.text() for label in labels]
+        self.assertEqual(window.history.item(0).text(), "")
         self.assertIn(
             ended_at.astimezone().strftime("%Y/%m/%d %H:%M:%S"),
-            window.history.item(0).text(),
+            label_texts,
         )
         self.assertNotIn(
             started_at.astimezone().strftime("%Y/%m/%d %H:%M:%S"),
-            window.history.item(0).text(),
+            label_texts,
         )
         window.show()
         self.application.processEvents()
         item = window.history.item(0)
         item_position = window.history.visualItemRect(item).center()
-        QTest.mouseClick(window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position)
+        QTest.mouseClick(
+            window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position
+        )
         self.assertIs(window.history.currentItem(), item)
-        QTest.mouseClick(window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position)
+        QTest.mouseClick(
+            window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position
+        )
         self.assertIsNone(window.history.currentItem())
         self.assertEqual(window.history.selectedItems(), [])
-        QTest.mouseClick(window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position)
+        QTest.mouseClick(
+            window.history.viewport(), Qt.MouseButton.LeftButton, pos=item_position
+        )
         window.refresh()
         self.assertEqual(
             window.history.currentItem().data(Qt.ItemDataRole.UserRole),

@@ -42,7 +42,7 @@ class _CaptureConfig(_ConfigSection):
 
 class _StreakConfig(_ConfigSection):
     target: int = Field(gt=0)
-    eligible_nightfarer: Literal["Executor"]
+    eligible_nightfarer: str
     failure_rule: Literal["all_nonvictories"]
     cap_at_target: bool
 
@@ -93,6 +93,7 @@ class AppSettings:
     language: str
     target_window: str
     target: int
+    eligible_nightfarer: str
     idle_interval_ms: int
     preparation_interval_ms: int
     gameplay_interval_ms: int
@@ -121,11 +122,18 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
         config = _ProjectConfig.model_validate(data)
     except ValidationError as error:
         raise ValueError(f"Invalid application configuration: {error}") from error
+    available_nightfarers = _load_available_nightfarers(root, config.paths)
+    if config.streak.eligible_nightfarer not in available_nightfarers:
+        raise ValueError(
+            "Invalid application configuration: eligible_nightfarer "
+            f"{config.streak.eligible_nightfarer!r} is not an available Nightfarer key"
+        )
 
     settings = AppSettings(
         language=config.language,
         target_window=config.capture.target_window,
         target=config.streak.target,
+        eligible_nightfarer=config.streak.eligible_nightfarer,
         idle_interval_ms=config.recognition.sampling.idle_ms,
         preparation_interval_ms=config.recognition.sampling.preparation_ms,
         gameplay_interval_ms=config.recognition.sampling.gameplay_ms,
@@ -144,3 +152,28 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
         hud_recent_sessions=config.hud.recent_sessions,
     )
     return data, settings
+
+
+def _load_available_nightfarers(root: Path, paths: dict[str, str]) -> set[str]:
+    manifest_path = paths.get("template_manifest")
+    if not manifest_path:
+        raise ValueError("Invalid application configuration: missing template_manifest path")
+    try:
+        manifest = yaml.safe_load((root / manifest_path).read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        raise ValueError(f"Could not load Nightfarers from {manifest_path}: {error}") from error
+    if not isinstance(manifest, dict) or not isinstance(
+        manifest.get("nightfarers"), list
+    ):
+        raise ValueError(f"Template manifest has no available Nightfarers: {manifest_path}")
+
+    nightfarer_ids = [
+        nightfarer.get("id")
+        for nightfarer in manifest["nightfarers"]
+        if isinstance(nightfarer, dict)
+    ]
+    if len(nightfarer_ids) != len(manifest["nightfarers"]) or any(
+        not isinstance(nightfarer_id, str) for nightfarer_id in nightfarer_ids
+    ):
+        raise ValueError(f"Template manifest has invalid Nightfarer keys: {manifest_path}")
+    return set(nightfarer_ids)
