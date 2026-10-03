@@ -157,7 +157,7 @@ class TrackerWindowTests(unittest.TestCase):
 
         self.assertEqual(
             window.current_label.text(),
-            "Result: Libra · Everdark · Day 3 Victory",
+            "Current: Executor - Hidden Nightlord\nResult: Libra · Everdark · Day 3 Victory",
         )
         self.assertIs(snapshot.sessions[0].status, SessionStatus.ACTIVE)
         window.deleteLater()
@@ -178,9 +178,16 @@ class TrackerWindowTests(unittest.TestCase):
             nightfarer="Executor",
             status=SessionStatus.DISCARDED,
         )
+        active = Session(
+            id="active-session",
+            started_at=started_at,
+            nightfarer="Executor",
+            nightlord_name="Caligo",
+            status=SessionStatus.ACTIVE,
+        )
         snapshot = HistorySnapshot(
-            sessions=(unresolved, discarded),
-            stats=calculate_streak((unresolved, discarded)),
+            sessions=(unresolved, active, discarded),
+            stats=calculate_streak((unresolved, active, discarded)),
         )
         sessions = Mock(snapshot=snapshot)
         monitor = Mock()
@@ -199,6 +206,7 @@ class TrackerWindowTests(unittest.TestCase):
             font_size=18,
         )
         window._refresh_timer.stop()
+        self.assertEqual(window.current_label.text(), "Current: Executor - Caligo")
         self.assertEqual(window.history.count(), 1)
         self.assertEqual(
             window.history.item(0).data(Qt.ItemDataRole.UserRole), "needs-resolution"

@@ -249,9 +249,7 @@ class TrackerWindow(QMainWindow):
         streak_font = QFont(panel_font)
         streak_font.setPixelSize(int(font_size * 1.8))
         self.streak_label.setFont(streak_font)
-        self.streak_label.setStyleSheet(
-            "color: #9ed7ae;"
-        )
+        self.streak_label.setStyleSheet("color: #9ed7ae;")
         self.monitor_label = QLabel("Starting monitor...")
         self.monitor_label.setFont(panel_font)
         self.sync_label = QLabel("Title sync: Pending")
@@ -263,8 +261,8 @@ class TrackerWindow(QMainWindow):
             QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.history.setMinimumHeight(150)
-        layout.addWidget(self.current_label)
         layout.addWidget(self.streak_label)
+        layout.addWidget(self.current_label)
         layout.addWidget(self.history, 1)
         layout.addWidget(self.monitor_label)
         layout.addWidget(self.sync_label)
@@ -286,9 +284,9 @@ class TrackerWindow(QMainWindow):
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             button_size = button.sizeHint()
             if button is self.lock_button:
-                locked_text_width = QFontMetrics(panel_font).horizontalAdvance(
-                    "Locked"
-                ) + 20
+                locked_text_width = (
+                    QFontMetrics(panel_font).horizontalAdvance("Locked") + 20
+                )
                 button_size.setWidth(max(button_size.width(), locked_text_width))
             button.setFixedSize(button_size)
         self.lock_button.setToolTip(
@@ -322,8 +320,7 @@ class TrackerWindow(QMainWindow):
         recognition = payload.get("recognition") if isinstance(payload, dict) else None
         self._live_result = (
             recognition
-            if isinstance(recognition, dict)
-            and recognition.get("screen") == "result"
+            if isinstance(recognition, dict) and recognition.get("screen") == "result"
             else None
         )
         self.monitor_label.setText(status)
@@ -353,19 +350,18 @@ class TrackerWindow(QMainWindow):
             ),
             None,
         )
-        if self._live_result is not None:
-            self.current_label.setText(self._format_live_result(self._live_result))
-        elif active:
+        if active:
             nightlord = (
                 "Hidden Nightlord"
                 if active.nightlord_hidden and not active.nightlord_name
                 else active.nightlord_name or "Unknown Nightlord"
             )
-            self.current_label.setText(
-                f"Current: {active.nightfarer or 'Unknown'} - {nightlord}"
-            )
+            current_text = f"Current: {active.nightfarer or 'Unknown'} - {nightlord}"
         else:
-            self.current_label.setText("No active session")
+            current_text = "No active session"
+        if self._live_result is not None:
+            current_text += "\n" + self._format_live_result(self._live_result)
+        self.current_label.setText(current_text)
 
         selected_item = self.history.currentItem()
         selected_id = (
@@ -377,6 +373,7 @@ class TrackerWindow(QMainWindow):
                 session
                 for session in snapshot.sessions
                 if session.status is not SessionStatus.DISCARDED
+                and (active is None or session.id != active.id)
             ),
             key=lambda session: session.started_at,
             reverse=True,
@@ -395,19 +392,19 @@ class TrackerWindow(QMainWindow):
             nightlord_names.get(nightlord_id)
             or str(nightlord_id).replace("_", " ").title()
             if nightlord_id not in (None, "unknown")
-            else "Nightlord pending"
+            else "Nightlord?"
         )
         variant = recognition.get("variant")
         variant_label = (
             str(variant).replace("_", " ").title()
             if variant not in (None, "unknown")
-            else "Variant pending"
+            else "Variant?"
         )
         outcome = recognition.get("outcome")
         outcome_label = (
             str(outcome).replace("_", " ").title()
             if outcome not in (None, "unknown")
-            else "Outcome pending"
+            else "Outcome?"
         )
         return f"Result: {nightlord} · {variant_label} · {outcome_label}"
 
