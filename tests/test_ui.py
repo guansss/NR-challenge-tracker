@@ -162,6 +162,46 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertIs(snapshot.sessions[0].status, SessionStatus.ACTIVE)
         window.deleteLater()
 
+    def test_history_respects_configured_recent_session_limit(self) -> None:
+        sessions_list = [
+            Session(
+                id=f"session-{index}",
+                started_at=datetime(2026, 10, index + 1, tzinfo=timezone.utc),
+                ended_at=datetime(2026, 10, index + 1, 1, tzinfo=timezone.utc),
+                status=SessionStatus.COMPLETED,
+            )
+            for index in range(4)
+        ]
+        snapshot = HistorySnapshot(
+            sessions=tuple(sessions_list), stats=calculate_streak(tuple(sessions_list))
+        )
+        sessions = Mock(snapshot=snapshot)
+        monitor = Mock()
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "Disabled",
+            "sync_message": "",
+        }
+
+        window = TrackerWindow(
+            sessions,
+            monitor,
+            title_state,
+            ["Executor"],
+            ["Caligo"],
+            recent_sessions=2,
+        )
+
+        self.assertEqual(window.history.count(), 2)
+        self.assertEqual(
+            [
+                window.history.item(index).data(Qt.ItemDataRole.UserRole)
+                for index in range(window.history.count())
+            ],
+            ["session-3", "session-2"],
+        )
+        window.deleteLater()
+
     def test_history_shows_unresolved_sessions_but_not_discarded_sessions(self) -> None:
         started_at = datetime(2026, 10, 3, tzinfo=timezone.utc)
         ended_at = datetime(2026, 10, 3, 1, 30, tzinfo=timezone.utc)

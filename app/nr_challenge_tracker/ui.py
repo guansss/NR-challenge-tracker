@@ -182,6 +182,7 @@ class TrackerWindow(QMainWindow):
         opacity: float = 0.9,
         font_size: int = 14,
         width: int = 420,
+        recent_sessions: int = 10,
     ) -> None:
         super().__init__()
         self.sessions = sessions
@@ -189,6 +190,7 @@ class TrackerWindow(QMainWindow):
         self.title_state = title_state
         self.nightfarers = nightfarers
         self.nightlords = nightlords
+        self.recent_sessions = recent_sessions
         self._drag_offset = None
         self._mouse_passthrough = False
         self._hotkey_registered = False
@@ -377,7 +379,7 @@ class TrackerWindow(QMainWindow):
             ),
             key=lambda session: session.started_at,
             reverse=True,
-        )[:8]
+        )[: self.recent_sessions]
         for session in recent_sessions:
             item = QListWidgetItem(_format_session(session, stats))
             item.setData(Qt.ItemDataRole.UserRole, session.id)

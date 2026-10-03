@@ -56,4 +56,5 @@ hud:
   opacity: 0.10
   font_size: 14
   width: 420
+  recent_sessions: 10
   show_recent_sessions: true

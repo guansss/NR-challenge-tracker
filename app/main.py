@@ -80,6 +80,7 @@ def main() -> int:
             opacity=settings.hud_opacity,
             font_size=settings.hud_font_size,
             width=settings.hud_width,
+            recent_sessions=settings.hud_recent_sessions,
         )
         api.start()
         window.show()

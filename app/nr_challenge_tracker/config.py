@@ -28,6 +28,7 @@ class AppSettings:
     hud_opacity: float
     hud_font_size: int
     hud_width: int
+    hud_recent_sessions: int
 
 
 def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
@@ -85,6 +86,9 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
             hud_opacity=_bounded_number(hud["opacity"], 0.1, 1.0, "hud.opacity"),
             hud_font_size=_positive_int(hud["font_size"], "hud.font_size"),
             hud_width=_positive_int(hud["width"], "hud.width"),
+            hud_recent_sessions=_positive_int(
+                hud["recent_sessions"], "hud.recent_sessions"
+            ),
         )
     except (KeyError, TypeError) as error:
         raise ValueError(f"Missing or invalid application setting: {error}") from error
