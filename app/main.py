@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import signal
 import sys
 from pathlib import Path
+
+existing_logging_rules = os.environ.get("QT_LOGGING_RULES", "").strip()
+os.environ["QT_LOGGING_RULES"] = ";".join(
+    rule
+    for rule in (existing_logging_rules, "qt.multimedia.ffmpeg=false")
+    if rule
+)
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
