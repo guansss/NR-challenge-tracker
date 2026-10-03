@@ -433,7 +433,77 @@ class TrackerWindowTests(unittest.TestCase):
         )
         window.deleteLater()
 
-    def test_history_refresh_preserves_scroll_position(self) -> None:
+    def test_resolved_active_session_is_added_to_history(self) -> None:
+        started_at = datetime(2026, 10, 3, tzinfo=timezone.utc)
+        ended_at = datetime(2026, 10, 3, 1, tzinfo=timezone.utc)
+        active = Session(
+            id="active-session",
+            started_at=started_at,
+            nightfarer="executor",
+            nightlord_name="caligo",
+            status=SessionStatus.ACTIVE,
+        )
+        resolved = Session(
+            id=active.id,
+            started_at=started_at,
+            ended_at=ended_at,
+            nightfarer="executor",
+            nightlord_name="caligo",
+            nightlord_variant=NightlordVariant.NORMAL,
+            progress=Progress.DAY_3_VICTORY,
+            status=SessionStatus.COMPLETED,
+        )
+        sessions = Mock(
+            snapshot=HistorySnapshot(
+                sessions=(active,), stats=_calculate_test_streak((active,))
+            )
+        )
+
+        def save_resolution(*args, **kwargs):
+            sessions.snapshot = HistorySnapshot(
+                sessions=(resolved,), stats=_calculate_test_streak((resolved,))
+            )
+            return resolved
+
+        sessions.resolve_session.side_effect = save_resolution
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        dialog = Mock()
+        dialog.exec.return_value = 1
+        dialog.session_picker.currentData.return_value = active.id
+        dialog.nightfarer.currentData.return_value = "executor"
+        dialog.nightlord.currentData.return_value = "caligo"
+        dialog.selected_progress.return_value = Progress.DAY_3_VICTORY
+        dialog.selected_variant.return_value = NightlordVariant.NORMAL
+        dialog.started_at.dateTime.return_value.toPython.return_value = started_at
+        dialog.ended_at.dateTime.return_value.toPython.return_value = ended_at
+
+        window = TrackerWindow(
+            sessions,
+            Mock(),
+            title_state,
+            ["executor"],
+            ["caligo"],
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+        )
+        window._refresh_timer.stop()
+
+        with patch(
+            "app.nr_challenge_tracker.ui.ResolveSessionDialog", return_value=dialog
+        ):
+            window.resolve_session()
+
+        self.assertEqual(window.history.count(), 1)
+        self.assertEqual(
+            window.history.item(0).data(Qt.ItemDataRole.UserRole), active.id
+        )
+        sessions.resolve_session.assert_called_once()
+        window.deleteLater()
+
+    def test_history_refresh_preserves_scroll_and_jumps_to_top_on_update(self) -> None:
         sessions_list = tuple(
             Session(
                 id=f"session-{index}",
@@ -480,6 +550,24 @@ class TrackerWindowTests(unittest.TestCase):
         self.application.processEvents()
 
         self.assertEqual(scroll_bar.value(), scroll_bar.maximum())
+
+        new_session = Session(
+            id="session-new",
+            started_at=datetime(2026, 10, 13, tzinfo=timezone.utc),
+            ended_at=datetime(2026, 10, 13, 1, tzinfo=timezone.utc),
+            status=SessionStatus.COMPLETED,
+        )
+        updated_sessions = (*sessions_list, new_session)
+        sessions.snapshot = HistorySnapshot(
+            sessions=updated_sessions,
+            stats=_calculate_test_streak(updated_sessions),
+        )
+        scroll_bar.setValue(scroll_bar.maximum() // 2)
+
+        window.refresh()
+        self.application.processEvents()
+
+        self.assertEqual(scroll_bar.value(), scroll_bar.minimum())
         window.deleteLater()
 
     def test_history_shows_unresolved_sessions_but_not_discarded_sessions(self) -> None:

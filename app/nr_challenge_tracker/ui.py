@@ -239,6 +239,7 @@ class TrackerWindow(QMainWindow):
         self._mouse_passthrough = False
         self._hotkey_registered = False
         self._live_result: dict[str, Any] | None = None
+        self._history_sessions: tuple[Session, ...] | None = None
         self.setWindowTitle(tr(language, "app.title"))
         self.setWindowFlags(
             Qt.WindowType.Tool
@@ -462,7 +463,6 @@ class TrackerWindow(QMainWindow):
         scroll_bar = self.history.verticalScrollBar()
         scroll_position = scroll_bar.value()
         was_at_bottom = scroll_position == scroll_bar.maximum()
-        self.history.clear()
         recent_sessions = sorted(
             (
                 session
@@ -473,6 +473,12 @@ class TrackerWindow(QMainWindow):
             key=lambda session: session.started_at,
             reverse=True,
         )[: self.recent_sessions]
+        history_updated = (
+            self._history_sessions is not None
+            and tuple(recent_sessions) != self._history_sessions
+        )
+        self._history_sessions = tuple(recent_sessions)
+        self.history.clear()
         for session in recent_sessions:
             row = self._format_session(session, stats, self.history)
             item = QListWidgetItem()
@@ -483,7 +489,12 @@ class TrackerWindow(QMainWindow):
             if session.id == selected_id:
                 self.history.setCurrentItem(item)
         self.history.doItemsLayout()
-        scroll_bar.setValue(scroll_bar.maximum() if was_at_bottom else scroll_position)
+        if history_updated:
+            scroll_bar.setValue(scroll_bar.minimum())
+        else:
+            scroll_bar.setValue(
+                scroll_bar.maximum() if was_at_bottom else scroll_position
+            )
 
     def _format_live_result(self, recognition: dict[str, Any]) -> str:
         nightlord_id = recognition.get("nightlord")

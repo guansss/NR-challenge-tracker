@@ -69,6 +69,20 @@ class SessionServiceTests(unittest.TestCase):
         self.assertIn("identity conflict", result.review_reason or "")
         self.assertEqual(self.service.snapshot.stats.current_streak, 0)
 
+    def test_unknown_result_identity_preserves_known_preparation_identity(self) -> None:
+        session = self.start_eligible_session()
+
+        result = self.service.finalize_result(
+            session.id,
+            progress=Progress.DAY_3_VICTORY,
+            ended_at=START + timedelta(minutes=45),
+            nightlord_name="unknown",
+        )
+
+        self.assertEqual(result.status, SessionStatus.COMPLETED)
+        self.assertEqual(result.nightlord_name, "harmonia")
+        self.assertIsNone(result.result_nightlord_name)
+
     def test_hidden_nightlord_without_result_identity_stays_unresolved(self) -> None:
         session = self.service.start_session(
             nightfarer=ELIGIBLE_NIGHTFARER,

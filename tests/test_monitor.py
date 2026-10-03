@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
+from unittest.mock import patch
 
 import numpy as np
 
@@ -172,7 +173,53 @@ class PreparationMonitorTests(unittest.TestCase):
 
 
 class ResultMonitorTests(unittest.TestCase):
-    def test_result_stays_active_until_exit_and_keeps_later_identity(self) -> None:
+    def test_later_unknown_result_frame_does_not_replace_recognized_nightlord(self) -> None:
+        results = [
+            {
+                "screen": "result",
+                "nightlord": "libra",
+                "variant": "everdark",
+                "outcome": "day_3_victory",
+            },
+            {
+                "screen": "result",
+                "nightlord": "UNKNOWN",
+                "variant": "UNKNOWN",
+                "outcome": "UNKNOWN",
+            },
+            {"screen": "unknown"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            sessions.start_session(
+                nightfarer="executor",
+                nightlord_name="libra",
+                hidden_nightlord=False,
+                started_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+            )
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=1,
+            )
+
+            for _ in results:
+                monitor._process(None)
+
+        session = sessions.snapshot.sessions[-1]
+        self.assertEqual(session.status.value, "completed")
+        self.assertEqual(session.result_nightlord_name, "libra")
+        self.assertEqual(session.nightlord_variant, NightlordVariant.EVERDARK)
+        self.assertEqual(session.progress, Progress.DAY_3_VICTORY)
+
+    def test_complete_result_updates_history_before_leaving_screen(self) -> None:
         results = [
             {
                 "screen": "result",
@@ -192,12 +239,22 @@ class ResultMonitorTests(unittest.TestCase):
                 "variant": "everdark",
                 "outcome": "day_3_victory",
             },
+            {
+                "screen": "result",
+                "nightlord": "libra",
+                "variant": "normal",
+                "outcome": "day_2",
+            },
             {"screen": "unknown"},
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
+            history_path = Path(temp_dir) / "history.yaml"
+            first_recognition_at = datetime(2027, 10, 3, 12, 1, tzinfo=timezone.utc)
+            later_recognition_at = datetime(2027, 10, 3, 12, 2, tzinfo=timezone.utc)
+            screen_exit_at = datetime(2027, 10, 3, 12, 3, tzinfo=timezone.utc)
             sessions = SessionService(
                 HistoryRepository(
-                    Path(temp_dir) / "history.yaml",
+                    history_path,
                     eligible_nightfarer=ELIGIBLE_NIGHTFARER,
                 )
             )
@@ -217,27 +274,54 @@ class ResultMonitorTests(unittest.TestCase):
                 result_interval_ms=200,
             )
 
-            monitor._process(None)
-            monitor._process(None)
+            with patch("app.nr_challenge_tracker.monitor.datetime") as monitor_datetime:
+                monitor_datetime.now.side_effect = [
+                    first_recognition_at,
+                    later_recognition_at,
+                    screen_exit_at,
+                ]
+                monitor._process(None)
+                monitor._process(None)
 
-            self.assertTrue(monitor._result_active)
-            self.assertEqual(monitor._sample_interval_ms, 200)
-            self.assertEqual(sessions.snapshot.sessions[-1].id, active.id)
-            self.assertIsNone(sessions.snapshot.sessions[-1].ended_at)
+                self.assertTrue(monitor._result_active)
+                self.assertEqual(monitor._sample_interval_ms, 200)
+                self.assertEqual(sessions.snapshot.sessions[-1].id, active.id)
+                self.assertIsNone(sessions.snapshot.sessions[-1].ended_at)
 
-            monitor._process(None)
+                monitor._process(None)
 
-            self.assertTrue(monitor._result_active)
-            self.assertIsNone(sessions.snapshot.sessions[-1].ended_at)
+                session = HistoryRepository(
+                    history_path,
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                ).load().sessions[-1]
+                self.assertTrue(monitor._result_active)
+                self.assertEqual(session.status.value, "completed")
+                self.assertEqual(session.result_nightlord_name, "libra")
+                self.assertEqual(session.nightlord_variant, NightlordVariant.EVERDARK)
+                self.assertEqual(session.progress, Progress.DAY_3_VICTORY)
+                self.assertEqual(session.ended_at, first_recognition_at)
 
-            monitor._process(None)
+                monitor._process(None)
+
+                session = HistoryRepository(
+                    history_path,
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                ).load().sessions[-1]
+                self.assertTrue(monitor._result_active)
+                self.assertEqual(session.status.value, "completed")
+                self.assertEqual(session.result_nightlord_name, "libra")
+                self.assertEqual(session.nightlord_variant, NightlordVariant.NORMAL)
+                self.assertEqual(session.progress, Progress.DAY_2)
+                self.assertEqual(session.ended_at, first_recognition_at)
+
+                monitor._process(None)
 
             session = sessions.snapshot.sessions[-1]
             self.assertFalse(monitor._result_active)
             self.assertEqual(session.status.value, "completed")
             self.assertEqual(session.result_nightlord_name, "libra")
-            self.assertEqual(session.nightlord_variant, NightlordVariant.EVERDARK)
-            self.assertEqual(session.progress, Progress.DAY_3_VICTORY)
+            self.assertEqual(session.nightlord_variant, NightlordVariant.NORMAL)
+            self.assertEqual(session.progress, Progress.DAY_2)
 
 
 class DebugScreenshotMonitorTests(unittest.TestCase):

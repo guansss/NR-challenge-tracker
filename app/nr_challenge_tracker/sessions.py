@@ -178,47 +178,92 @@ class SessionService:
                 raise SessionTransitionError(
                     f"Cannot finalize a session in state {session.status.value}"
                 )
-            self._validate_variant(nightlord_name or session.nightlord_name, variant)
-
-            conflict = (
-                session.nightlord_name is not None
-                and nightlord_name is not None
-                and session.nightlord_name.strip().casefold()
-                != nightlord_name.strip().casefold()
-            )
-            outcome_known = progress in FINAL_OUTCOMES
-            hidden_identity_missing = session.nightlord_hidden and not nightlord_name
-            reason = None
-            if conflict:
-                reason = (
-                    f"Nightlord identity conflict: preparation showed "
-                    f"{session.nightlord_name}, result showed {nightlord_name}"
-                )
-            elif not outcome_known:
-                reason = "Final progress could not be confidently recognized"
-            elif hidden_identity_missing:
-                reason = "Hidden Nightlord identity could not be recognized"
-
-            updated = replace(
+            return self._save_result(
                 session,
-                ended_at=ended_at,
-                nightlord_name=(
-                    session.nightlord_name
-                    if conflict
-                    else nightlord_name or session.nightlord_name
-                ),
-                nightlord_variant=variant,
-                result_nightlord_name=nightlord_name,
                 progress=progress,
-                status=(
-                    SessionStatus.UNRESOLVED
-                    if conflict or not outcome_known or hidden_identity_missing
-                    else SessionStatus.COMPLETED
-                ),
-                review_reason=reason,
+                ended_at=ended_at,
+                nightlord_name=nightlord_name,
+                variant=variant,
             )
-            self._replace_and_commit(updated)
-            return updated
+
+    def update_result(
+        self,
+        session_id: str,
+        *,
+        progress: Progress | None,
+        ended_at: datetime,
+        nightlord_name: str | None = None,
+        variant: NightlordVariant = NightlordVariant.UNKNOWN,
+    ) -> Session:
+        with self._lock:
+            session = self._find(session_id)
+            if session.status not in {SessionStatus.COMPLETED, SessionStatus.UNRESOLVED}:
+                raise SessionTransitionError(
+                    f"Cannot update a result for a session in state {session.status.value}"
+                )
+            return self._save_result(
+                session,
+                progress=progress,
+                ended_at=ended_at,
+                nightlord_name=nightlord_name,
+                variant=variant,
+            )
+
+    def _save_result(
+        self,
+        session: Session,
+        *,
+        progress: Progress | None,
+        ended_at: datetime,
+        nightlord_name: str | None,
+        variant: NightlordVariant,
+    ) -> Session:
+        if (
+            isinstance(nightlord_name, str)
+            and nightlord_name.strip().casefold() == "unknown"
+        ):
+            nightlord_name = None
+        self._validate_variant(nightlord_name or session.nightlord_name, variant)
+
+        conflict = (
+            session.nightlord_name is not None
+            and nightlord_name is not None
+            and session.nightlord_name.strip().casefold()
+            != nightlord_name.strip().casefold()
+        )
+        outcome_known = progress in FINAL_OUTCOMES
+        hidden_identity_missing = session.nightlord_hidden and not nightlord_name
+        reason = None
+        if conflict:
+            reason = (
+                f"Nightlord identity conflict: preparation showed "
+                f"{session.nightlord_name}, result showed {nightlord_name}"
+            )
+        elif not outcome_known:
+            reason = "Final progress could not be confidently recognized"
+        elif hidden_identity_missing:
+            reason = "Hidden Nightlord identity could not be recognized"
+
+        updated = replace(
+            session,
+            ended_at=ended_at,
+            nightlord_name=(
+                session.nightlord_name
+                if conflict
+                else nightlord_name or session.nightlord_name
+            ),
+            nightlord_variant=variant,
+            result_nightlord_name=nightlord_name,
+            progress=progress,
+            status=(
+                SessionStatus.UNRESOLVED
+                if conflict or not outcome_known or hidden_identity_missing
+                else SessionStatus.COMPLETED
+            ),
+            review_reason=reason,
+        )
+        self._replace_and_commit(updated)
+        return updated
 
     def resolve_session(
         self,

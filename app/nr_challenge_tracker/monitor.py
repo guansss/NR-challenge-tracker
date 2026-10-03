@@ -99,6 +99,9 @@ class RecognitionMonitor:
         self._debug_saved_paths: set[Path] = set()
         self._result_active = False
         self._pending_result: dict[str, Any] = {}
+        self._result_session_id: str | None = None
+        self._persisted_result: dict[str, Any] | None = None
+        self._result_ended_at: datetime | None = None
 
     @property
     def status(self) -> str:
@@ -280,13 +283,19 @@ class RecognitionMonitor:
             self._preparation_active = False
             if self._result_active:
                 self._remember_result(result)
-                recognized_session = self._active_session()
+                recognized_session = self._persist_complete_result()
             elif self.debouncer.observe(screen, identity) == "result":
                 screen_entry = screen
                 self._result_active = True
                 self._pending_result = {}
+                active_session = self._active_session()
+                self._result_session_id = (
+                    active_session.id if active_session is not None else None
+                )
+                self._persisted_result = None
+                self._result_ended_at = None
                 self._remember_result(result)
-                recognized_session = self._active_session()
+                recognized_session = self._persist_complete_result()
         else:
             self._preparation_active = False
             if self._result_active:
@@ -316,6 +325,9 @@ class RecognitionMonitor:
         self._preparation_active = False
         self._result_active = False
         self._pending_result = {}
+        self._result_session_id = None
+        self._persisted_result = None
+        self._result_ended_at = None
 
     def _handle_preparation(self, result: dict[str, Any]) -> Session | None:
         nightfarer_id = result.get("nightfarer")
@@ -364,8 +376,47 @@ class RecognitionMonitor:
     def _remember_result(self, result: dict[str, Any]) -> None:
         for field in ("nightlord", "variant", "outcome"):
             value = result.get(field)
-            if value not in (None, "unknown"):
-                self._pending_result[field] = value
+            if field == "nightlord":
+                if (
+                    not isinstance(value, str)
+                    or not value.strip()
+                    or value.strip().casefold() == "unknown"
+                ):
+                    continue
+            elif field == "variant":
+                if (
+                    not isinstance(value, str)
+                    or _variant_from_value(value) is NightlordVariant.UNKNOWN
+                ):
+                    continue
+            elif (
+                not isinstance(value, str)
+                or _progress_from_value(value)
+                not in {
+                    Progress.DAY_1,
+                    Progress.DAY_2,
+                    Progress.DAY_3,
+                    Progress.DAY_3_VICTORY,
+                }
+            ):
+                continue
+            self._pending_result[field] = value
+
+    def _result_is_complete(self) -> bool:
+        nightlord = self._pending_result.get("nightlord")
+        return (
+            isinstance(nightlord, str)
+            and bool(nightlord.strip())
+            and _variant_from_value(self._pending_result.get("variant"))
+            is not NightlordVariant.UNKNOWN
+            and _progress_from_value(self._pending_result.get("outcome"))
+            in {
+                Progress.DAY_1,
+                Progress.DAY_2,
+                Progress.DAY_3,
+                Progress.DAY_3_VICTORY,
+            }
+        )
 
     def _active_session(self) -> Session | None:
         return next(
@@ -378,26 +429,44 @@ class RecognitionMonitor:
         )
 
     def _finish_result(self) -> Session | None:
-        result = self._pending_result
+        recognized_session = self._persist_result()
         self._result_active = False
         self._pending_result = {}
-        return self._handle_result(result)
+        self._result_session_id = None
+        self._persisted_result = None
+        self._result_ended_at = None
+        return recognized_session
 
-    def _handle_result(self, result: dict[str, Any]) -> Session | None:
-        session = self._active_session()
-        if session is None:
+    def _persist_complete_result(self) -> Session | None:
+        if not self._result_is_complete():
+            return self._active_session()
+        return self._persist_result()
+
+    def _persist_result(self) -> Session | None:
+        session_id = self._result_session_id
+        result = self._pending_result
+        if (
+            session_id is None
+            or result == self._persisted_result
+        ):
             return None
-        progress = _progress_from_value(result.get("outcome"))
-        nightlord_id = result.get("nightlord")
-        finalized = self.sessions.finalize_result(
-            session.id,
-            progress=progress,
-            ended_at=datetime.now(timezone.utc).astimezone(),
-            nightlord_name=nightlord_id or None,
+        if self._result_ended_at is None:
+            self._result_ended_at = datetime.now(timezone.utc).astimezone()
+        save_result = (
+            self.sessions.finalize_result
+            if self._persisted_result is None
+            else self.sessions.update_result
+        )
+        saved = save_result(
+            session_id,
+            progress=_progress_from_value(result.get("outcome")),
+            ended_at=self._result_ended_at,
+            nightlord_name=result.get("nightlord"),
             variant=_variant_from_value(result.get("variant")),
         )
+        self._persisted_result = result.copy()
         self._publish("monitor.result_recorded", result)
-        return finalized
+        return saved
 
     def _save_debug_screenshot(
         self, image: Any, result: dict[str, Any], session: Session
