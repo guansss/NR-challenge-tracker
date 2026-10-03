@@ -202,32 +202,36 @@ class RecognitionEngine:
             else "unknown"
         )
 
-        victory_region = crop[:, round(width * 0.62) :]
-        victory_scores = {
-            name: self._normalized_match(
-                victory_region,
-                self.progress_templates[name][:, round(width * 0.62) :],
+        victory: bool | None = None
+        victory_confidence: float | None = None
+        victory_margin: float | None = None
+        if day == "day_3":
+            victory_region = crop[:, round(width * 0.62) :]
+            victory_scores = {
+                name: self._normalized_match(
+                    victory_region,
+                    self.progress_templates[name][:, round(width * 0.62) :],
+                )
+                for name in ("day_3", "day_3_victory")
+            }
+            ranked_victory = sorted(
+                victory_scores.items(), key=lambda entry: entry[1], reverse=True
             )
-            for name in ("day_3", "day_3_victory")
-        }
-        ranked_victory = sorted(
-            victory_scores.items(), key=lambda entry: entry[1], reverse=True
-        )
-        best_victory, best_victory_score = ranked_victory[0]
-        victory_margin = best_victory_score - ranked_victory[1][1]
-        if (
-            best_victory_score < self.min_template_score
-            or victory_margin < self.min_victory_margin
-        ):
-            victory: bool | None = None
-        else:
-            victory = best_victory == "day_3_victory"
+            best_victory, victory_confidence = ranked_victory[0]
+            victory_margin = victory_confidence - ranked_victory[1][1]
+            if (
+                victory_confidence < self.min_template_score
+                or victory_margin < self.min_victory_margin
+            ):
+                victory = None
+            else:
+                victory = best_victory == "day_3_victory"
 
         if day == "day_3" and victory is True:
             outcome = "day_3_victory"
         elif day == "day_3" and victory is False:
             outcome = "day_3"
-        elif day in {"day_1", "day_2"} and victory is False:
+        elif day in {"day_1", "day_2"}:
             outcome = day
         else:
             outcome = "unknown"
@@ -236,7 +240,7 @@ class RecognitionEngine:
             "day_confidence": best_day_score,
             "day_margin": day_margin,
             "victory": victory,
-            "victory_confidence": best_victory_score,
+            "victory_confidence": victory_confidence,
             "victory_margin": victory_margin,
             "outcome": outcome,
         }

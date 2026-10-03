@@ -55,6 +55,36 @@ class RecognitionScreenTests(unittest.TestCase):
         self.assertEqual(recognized, preparation)
         result_nightlord.assert_not_called()
 
+    def test_day_one_progress_skips_victory_matching(self) -> None:
+        engine = object.__new__(RecognitionEngine)
+        engine.progress_roi = (0.0, 0.0, 1.0, 1.0)
+        engine.progress_templates = {
+            name: np.zeros((2, 100, 3), dtype=np.uint8)
+            for name in ("day_1", "day_2", "day_3", "day_3_victory")
+        }
+        engine.min_template_score = 0.5
+        engine.min_progress_margin = 0.015
+        engine.min_victory_margin = 0.015
+        image = np.zeros((2, 100, 3), dtype=np.uint8)
+
+        with (
+            patch.object(engine, "_normalized_crop", return_value=image),
+            patch.object(RecognitionEngine, "_resize_like", return_value=image),
+            patch.object(
+                engine,
+                "_normalized_match",
+                side_effect=[0.9, 0.4, 0.3, 0.2],
+            ) as normalized_match,
+        ):
+            result = engine._result_progress(image)
+
+        self.assertEqual(result["day"], "day_1")
+        self.assertEqual(result["outcome"], "day_1")
+        self.assertIsNone(result["victory"])
+        self.assertIsNone(result["victory_confidence"])
+        self.assertIsNone(result["victory_margin"])
+        self.assertEqual(normalized_match.call_count, 4)
+
 
 class RecognitionNightlordTests(unittest.TestCase):
     def test_result_identity_below_result_threshold_is_rejected(self) -> None:
