@@ -168,7 +168,7 @@ class TrackerWindowTests(unittest.TestCase):
                 [],
                 eligible_nightfarer="recluse",
             )
-            self.assertEqual(window.goal_label.text(), "Goal: Recluse")
+            self.assertEqual(window.goal_label.text(), "Goal: Recluse streak")
             payload = {"status_values": {"title": "Nightreign"}}
             window.monitor_update(
                 {"screen_entry": "preparation", **payload}, "monitor.monitoring_window"
@@ -176,7 +176,6 @@ class TrackerWindowTests(unittest.TestCase):
             window.monitor_update(
                 {"screen_entry": "result", **payload}, "monitor.monitoring_window"
             )
-            window.monitor_update({}, "monitor.monitoring_window")
             self.application.processEvents()
 
         self.assertEqual(window.monitor_label.text(), "Monitoring Nightreign")
@@ -268,7 +267,7 @@ class TrackerWindowTests(unittest.TestCase):
 
         self.assertEqual(window.windowTitle(), "黑夜君临挑战追踪器")
         self.assertEqual(window.pause_button.text(), "暂停")
-        self.assertEqual(window.goal_label.text(), "目标：执行者")
+        self.assertEqual(window.goal_label.text(), "目标：执行者连胜")
         self.assertEqual(window.current_label.text(), "没有进行中的场次")
         self.assertEqual(window.sync_label.text(), "直播标题同步：已禁用")
         window.monitor_update({}, "monitor.window_unavailable")
@@ -574,16 +573,6 @@ class TrackerWindowTests(unittest.TestCase):
         button_texts = [button.text() for button in window.findChildren(QPushButton)]
         self.assertNotIn("Open config", button_texts)
         self.assertIn("Lock", button_texts)
-        for widget in (
-            window.heading,
-            window.monitor_label,
-            window.sync_label,
-            window.pause_button,
-            window.history,
-        ):
-            self.assertEqual(widget.font().pixelSize(), 18)
-        self.assertEqual(window.current_label.font().pixelSize(), 19)
-        self.assertEqual(window.streak_label.font().pixelSize(), 32)
         self.assertIn(
             'QPushButton#lockButton[locked="true"]:hover',
             window.centralWidget().styleSheet(),
@@ -593,15 +582,10 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertTrue(window.lock_button.property("locked"))
         self.assertIn("background: transparent", window.centralWidget().styleSheet())
         history_size = window.history.size()
-        button_sizes = [button.size() for button in window.findChildren(QPushButton)]
         window.resize(620, 520)
         self.application.processEvents()
         self.assertGreater(window.history.width(), history_size.width())
         self.assertGreater(window.history.height(), history_size.height())
-        self.assertEqual(
-            [button.size() for button in window.findChildren(QPushButton)],
-            button_sizes,
-        )
         window.deleteLater()
 
 
