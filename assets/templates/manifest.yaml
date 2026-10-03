@@ -128,6 +128,17 @@ nightlords:
 markers:
   hidden_nightlord: assets/templates/markers/hidden_nightlord.png
   selected_nightfarer: assets/templates/markers/selected_nightfarer.png
+  unselected_nightfarers:
+    wylder: assets/templates/markers/unselected_wylder.png
+    guardian: assets/templates/markers/unselected_guardian.png
+    ironeye: assets/templates/markers/unselected_ironeye.png
+    duchess: assets/templates/markers/unselected_duchess.png
+    raider: assets/templates/markers/unselected_raider.png
+    revenant: assets/templates/markers/unselected_revenant.png
+    recluse: assets/templates/markers/unselected_recluse.png
+    executor: assets/templates/markers/unselected_executor.png
+    scholar: assets/templates/markers/unselected_scholar.png
+    undertaker: assets/templates/markers/unselected_undertaker.png
 progress_templates:
   day_3_victory: assets/templates/result_progress/day_3_victory.png
   day_1: assets/templates/result_progress/day_1.png
@@ -479,6 +490,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:wylder
+  path: assets/templates/markers/unselected_wylder.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 125
+  - 394
+  - 165
+  - 434
+  source_box_normalized:
+  - 0.048828
+  - 0.273611
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:guardian
   path: assets/templates/nightfarers/guardian.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -498,6 +528,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:guardian
+  path: assets/templates/markers/unselected_guardian.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 264
+  - 394
+  - 304
+  - 434
+  source_box_normalized:
+  - 0.103125
+  - 0.273611
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:ironeye
   path: assets/templates/nightfarers/ironeye.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -517,6 +566,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:ironeye
+  path: assets/templates/markers/unselected_ironeye.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 403
+  - 394
+  - 443
+  - 434
+  source_box_normalized:
+  - 0.157422
+  - 0.273611
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:duchess
   path: assets/templates/nightfarers/duchess.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -536,6 +604,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:duchess
+  path: assets/templates/markers/unselected_duchess.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 541
+  - 394
+  - 581
+  - 434
+  source_box_normalized:
+  - 0.211328
+  - 0.273611
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:raider
   path: assets/templates/nightfarers/raider.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -555,6 +642,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:raider
+  path: assets/templates/markers/unselected_raider.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 680
+  - 394
+  - 720
+  - 434
+  source_box_normalized:
+  - 0.265625
+  - 0.273611
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:revenant
   path: assets/templates/nightfarers/revenant.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -574,6 +680,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:revenant
+  path: assets/templates/markers/unselected_revenant.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 125
+  - 534
+  - 165
+  - 574
+  source_box_normalized:
+  - 0.048828
+  - 0.370833
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:recluse
   path: assets/templates/nightfarers/recluse.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -593,6 +718,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:recluse
+  path: assets/templates/markers/unselected_recluse.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 264
+  - 534
+  - 304
+  - 574
+  source_box_normalized:
+  - 0.103125
+  - 0.370833
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:executor
   path: assets/templates/nightfarers/executor.png
   source: assets/dataset/preparation-screens/fulghor_revenant.jpg
@@ -612,6 +756,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:executor
+  path: assets/templates/markers/unselected_executor.png
+  source: assets/dataset/preparation-screens/fulghor_revenant.jpg
+  source_box_px:
+  - 403
+  - 534
+  - 443
+  - 574
+  source_box_normalized:
+  - 0.157422
+  - 0.370833
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:scholar
   path: assets/templates/nightfarers/scholar.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -631,6 +794,25 @@ assets:
   template_dimensions:
   - 84
   - 84
+- id: marker:unselected:scholar
+  path: assets/templates/markers/unselected_scholar.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 541
+  - 534
+  - 581
+  - 574
+  source_box_normalized:
+  - 0.211328
+  - 0.370833
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: nightfarer:undertaker
   path: assets/templates/nightfarers/undertaker.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
@@ -650,25 +832,44 @@ assets:
   template_dimensions:
   - 84
   - 84
-- id: marker:selected_nightfarer
-  path: assets/templates/markers/selected_nightfarer.png
+- id: marker:unselected:undertaker
+  path: assets/templates/markers/unselected_undertaker.png
   source: assets/dataset/preparation-screens/adel_executor.jpg
   source_box_px:
-  - 400
-  - 531
-  - 444
-  - 575
+  - 680
+  - 534
+  - 720
+  - 574
   source_box_normalized:
-  - 0.15625
-  - 0.36875
-  - 0.017188
-  - 0.030556
+  - 0.265625
+  - 0.370833
+  - 0.015625
+  - 0.027778
   source_dimensions:
   - 2560
   - 1440
   template_dimensions:
-  - 44
-  - 44
+  - 40
+  - 40
+- id: marker:selected_nightfarer
+  path: assets/templates/markers/selected_nightfarer.png
+  source: assets/dataset/preparation-screens/adel_executor.jpg
+  source_box_px:
+  - 403
+  - 534
+  - 443
+  - 574
+  source_box_normalized:
+  - 0.157422
+  - 0.370833
+  - 0.015625
+  - 0.027778
+  source_dimensions:
+  - 2560
+  - 1440
+  template_dimensions:
+  - 40
+  - 40
 - id: result_nightlord:adel:everdark
   path: assets/templates/nightlord_result_icons/adel-everdark.png
   source: assets/dataset/result-screens/adel-everdark_victory.jpg

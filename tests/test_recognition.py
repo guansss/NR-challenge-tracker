@@ -10,20 +10,20 @@ from tools.project_config import load_config
 
 
 class RecognitionScreenTests(unittest.TestCase):
-    def test_nightfarer_marker_uses_its_configured_score_threshold(self) -> None:
+    def test_lowest_unselected_marker_score_selects_nightfarer_without_margin(self) -> None:
         engine = object.__new__(RecognitionEngine)
         engine.preparation_roi = (0.0, 0.0, 1.0, 1.0)
         engine.preparation_templates = [("nightlord-a", None), ("nightlord-b", None)]
         marker = np.zeros((2, 2, 3), dtype=np.uint8)
         engine.templates = {"marker:hidden": marker, "marker:selected": marker}
         engine.nightfarer_templates = [("executor", None), ("guardian", None)]
+        engine.unselected_marker_templates = {"executor": marker, "guardian": marker}
         engine.grid_x = (0, 2, 4, 6, 8)
         engine.grid_y = (0, 2)
         engine.selection_marker_box = (0, 0, 2, 2)
         engine.reference_width = 10
         engine.reference_height = 10
         engine.min_template_score = 0.9
-        engine.min_nightfarer_marker_score = 0.5
         engine.min_identity_margin = 0.04
         image = np.zeros((10, 10, 3), dtype=np.uint8)
 
@@ -33,7 +33,7 @@ class RecognitionScreenTests(unittest.TestCase):
             patch.object(
                 engine,
                 "_normalized_match",
-                side_effect=[0.8, 0.1, 0.1, 0.6, 0.2],
+                side_effect=[0.8, 0.1, 0.1, 0.2, 0.201],
             ),
         ):
             result = engine._preparation(image)

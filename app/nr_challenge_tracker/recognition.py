@@ -35,9 +35,6 @@ class RecognitionEngine:
 
         thresholds = recognition.get("thresholds", {})
         self.min_template_score = thresholds.get("template_score", 0.50)
-        self.min_nightfarer_marker_score = thresholds.get(
-            "nightfarer_marker_template_score", 0.50
-        )
         self.min_result_template_score = thresholds.get(
             "result_template_score", 0.56
         )
@@ -77,6 +74,12 @@ class RecognitionEngine:
         self.templates["marker:selected"] = self._asset(
             self.manifest["markers"]["selected_nightfarer"]
         )
+        self.unselected_marker_templates = {
+            nightfarer_id: self._asset(path)
+            for nightfarer_id, path in self.manifest["markers"][
+                "unselected_nightfarers"
+            ].items()
+        }
         self.preparation_templates: list[tuple[str, Any]] = []
         self.result_templates: dict[str, dict[str, Any]] = {}
 
@@ -345,12 +348,14 @@ class RecognitionEngine:
         ):
             selected_nightlord = top_id
 
-        marker = self._template_for_frame(
-            "marker:selected", image, self.templates["marker:selected"]
-        )
-        marker_width, marker_height = marker.shape[1], marker.shape[0]
         marker_scores: list[tuple[str, float]] = []
         for index, (nightfarer_id, _) in enumerate(self.nightfarer_templates):
+            marker = self._template_for_frame(
+                f"marker:unselected:{nightfarer_id}",
+                image,
+                self.unselected_marker_templates[nightfarer_id],
+            )
+            marker_width, marker_height = marker.shape[1], marker.shape[0]
             column = index % 5
             row = index // 5
             tile_left = round(self.grid_x[column] * image.shape[1] / self.reference_width)
@@ -364,14 +369,9 @@ class RecognitionEngine:
             )
 
         marker_scores.sort(key=lambda entry: entry[1], reverse=True)
-        selected, selection_score = marker_scores[0]
-        selection_margin = selection_score - marker_scores[1][1]
-        nightfarer = (
-            selected
-            if selection_score >= self.min_nightfarer_marker_score
-            and selection_margin >= self.min_identity_margin
-            else None
-        )
+        selected, selection_score = marker_scores[-1]
+        selection_margin = marker_scores[-2][1] - selection_score
+        nightfarer = selected
         screen = (
             "preparation"
             if nightfarer is not None and (hidden or selected_nightlord is not None)
@@ -382,7 +382,7 @@ class RecognitionEngine:
             "nightlord": "hidden" if hidden else selected_nightlord,
             "nightlord_confidence": max(top_score, hidden_score),
             "nightfarer": nightfarer,
-            "nightfarer_confidence": selection_score,
+            "nightfarer_confidence": (1.0 - selection_score) / 2.0,
             "nightfarer_margin": selection_margin,
         }
 

@@ -6,7 +6,7 @@ paths:
   abnormal_result_screens: assets/dataset/result-screens-abnormal
   templates: assets/templates
   template_manifest: assets/templates/manifest.yaml
-  contact_sheet: assets/templates/contact_sheet.png
+  contact_sheet: assets/templates/contact_sheet.jpg
 
 recognition:
   source_dimensions: [2560, 1440]
@@ -15,7 +15,7 @@ recognition:
   result_nightlord_search_roi: [0.10, 0.68, 0.11, 0.18]
   nightfarer_grid_x: [120, 259, 398, 536, 675]
   nightfarer_grid_y: [389, 529]
-  selection_marker_in_tile: [2, 2, 44, 44]
+  selection_marker_in_tile: [5, 5, 40, 40]
   consecutive_confirmations: 3
   sampling:
     idle_ms: 1000
@@ -24,7 +24,6 @@ recognition:
     result_ms: 200
   thresholds:
     template_score: 0.9
-    nightfarer_marker_template_score: 0.5
     result_template_score: 0.75
     identity_margin: 0.04
     variant_score_margin: 0.004

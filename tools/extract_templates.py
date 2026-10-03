@@ -307,6 +307,7 @@ def generate() -> dict[str, Any]:
         require(candidates, f"No unselected portrait source for {identifier}")
         character_sources[identifier] = candidates[0]
 
+    unselected_marker_templates: dict[str, str] = {}
     for index, (identifier, _) in enumerate(NIGHTFARERS):
         column = index % 5
         row = index // 5
@@ -326,6 +327,26 @@ def generate() -> dict[str, Any]:
                 f"nightfarer:{identifier}",
             )
         )
+        tile_left = round(GRID_X[column] * width / REFERENCE_WIDTH)
+        tile_top = round(GRID_Y[row] * height / REFERENCE_HEIGHT)
+        marker_x, marker_y, marker_width, marker_height = SELECTION_MARKER_IN_TILE
+        marker_box = (
+            tile_left + marker_x,
+            tile_top + marker_y,
+            tile_left + marker_x + marker_width,
+            tile_top + marker_y + marker_height,
+        )
+        source = character_sources[identifier]
+        asset = write_asset(
+            loaded[source],
+            f"markers/unselected_{identifier}.png",
+            source,
+            marker_box,
+            (width, height),
+            f"marker:unselected:{identifier}",
+        )
+        assets.append(asset)
+        unselected_marker_templates[identifier] = asset["path"]
 
     executor_path = next(
         path for path in prep.values() if path.stem.lower().endswith("_executor")
@@ -445,6 +466,7 @@ def generate() -> dict[str, Any]:
         "markers": {
             "hidden_nightlord": "assets/templates/markers/hidden_nightlord.png",
             "selected_nightfarer": "assets/templates/markers/selected_nightfarer.png",
+            "unselected_nightfarers": unselected_marker_templates,
         },
         "progress_templates": {
             progress_id: asset["path"]
@@ -539,6 +561,11 @@ def validate_output() -> dict[str, Any]:
         )
 
     require(len(manifest.get("nightfarers", [])) == 10, "Expected 10 Nightfarers")
+    require(
+        set(manifest.get("markers", {}).get("unselected_nightfarers", {}))
+        == {identifier for identifier, _ in NIGHTFARERS},
+        "Expected one unselected marker template per Nightfarer",
+    )
     require(len(manifest.get("nightlords", [])) == 10, "Expected 10 Nightlords")
     require(
         sum(

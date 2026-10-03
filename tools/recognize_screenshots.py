@@ -272,15 +272,19 @@ def preparation(image: Any, manifest: dict[str, Any]) -> dict[str, Any]:
     if not hidden and top_score >= MIN_TEMPLATE_SCORE and top_score - second_score >= MIN_IDENTITY_MARGIN:
         selected_nightlord = top_id
 
-    marker = resize_template_for_frame(
-        read_image(asset_path(manifest["markers"]["selected_nightfarer"])),
-        image,
-        manifest,
-    )
     nightfarers = manifest["nightfarers"]
-    marker_width, marker_height = marker.shape[1], marker.shape[0]
     marker_scores: list[tuple[str, float]] = []
     for index, nightfarer in enumerate(nightfarers):
+        marker = resize_template_for_frame(
+            read_image(
+                asset_path(
+                    manifest["markers"]["unselected_nightfarers"][nightfarer["id"]]
+                )
+            ),
+            image,
+            manifest,
+        )
+        marker_width, marker_height = marker.shape[1], marker.shape[0]
         column = index % 5
         row = index // 5
         tile_left = round(GRID_X[column] * image.shape[1] / REFERENCE_WIDTH)
@@ -291,14 +295,9 @@ def preparation(image: Any, manifest: dict[str, Any]) -> dict[str, Any]:
         tile_region = image[top : top + marker_height, left : left + marker_width]
         marker_scores.append((nightfarer["id"], normalized_match(tile_region, marker)))
 
-    marker_scores.sort(key=lambda entry: entry[1], reverse=True)
-    selected, selection_score = marker_scores[0]
-    selection_margin = selection_score - marker_scores[1][1]
-    selected_nightfarer = (
-        selected
-        if selection_score >= MIN_TEMPLATE_SCORE and selection_margin >= MIN_IDENTITY_MARGIN
-        else None
-    )
+    marker_scores.sort(key=lambda entry: entry[1])
+    selected_nightfarer, selection_score = marker_scores[0]
+    selection_margin = marker_scores[1][1] - selection_score
     screen = (
         "preparation"
         if selected_nightfarer is not None
@@ -310,7 +309,7 @@ def preparation(image: Any, manifest: dict[str, Any]) -> dict[str, Any]:
         "nightlord": "hidden" if hidden else selected_nightlord,
         "nightlord_confidence": max(top_score, hidden_score),
         "nightfarer": selected_nightfarer,
-        "nightfarer_confidence": selection_score,
+        "nightfarer_confidence": (1.0 - selection_score) / 2.0,
         "nightfarer_margin": selection_margin,
     }
 
