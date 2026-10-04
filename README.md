@@ -1,6 +1,6 @@
 # Nightreign Challenge Tracker
 
-Windows desktop HUD and local session tracker for the Executor 100-victory challenge.
+Windows desktop HUD and game session tracker for Nightreign winning streak challenges.
 
 ## Run
 
