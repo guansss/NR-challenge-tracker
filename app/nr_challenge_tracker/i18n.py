@@ -8,10 +8,12 @@ from typing import Any
 import yaml
 from PySide6.QtCore import QLocale
 
+from .runtime_paths import resource_root
+
 SUPPORTED_LANGUAGES = frozenset({"en", "zh"})
 
 _TRANSLATIONS_PATH = (
-    Path(__file__).resolve().parents[2] / "assets" / "translations.yaml"
+    resource_root() / "assets" / "translations.yaml"
 )
 
 

@@ -11,6 +11,39 @@ From the repository root, install dependencies into the project virtual environm
 .\.venv\Scripts\python.exe -m app.main
 ```
 
+## Build a portable Windows package
+
+Build on Windows using the project's virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\python.exe .\tools\build_release.py
+```
+
+The project version is set in `pyproject.toml`; the build script creates
+`dist\Nightreign-Challenge-Tracker-v<version>-windows.zip`.
+
+This uses PyInstaller's one-file mode: the executable contains Python, its
+dependencies, and the runtime assets. Distribute the ZIP and extract both files
+into a writable folder before running `Nightreign Challenge Tracker.exe`.
+Python is not required on the target PC. `config.yaml` remains editable, and
+`history.yaml`, `title-state.json`, and `settings.yaml` are created or updated
+beside the executable. The package omits the offline screenshot dataset.
+
+## GitHub releases
+
+Pushing a version tag matching the version in `pyproject.toml` automatically
+builds the Windows package and publishes it as a GitHub Release. For example,
+with version `0.1.0`, push the `v0.1.0` tag:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Download the `Nightreign-Challenge-Tracker-v0.1.0-windows.zip` asset from that
+release's Assets section.
+
 The application captures only a visible window whose title contains `capture.target_window` from `config.yaml`. Keep Nightreign in a supported window-capture mode. If capture is unavailable, the app preserves any attempt as interrupted rather than recording a loss.
 
 Session history is stored in `history.yaml` at the project root. Desired-title revision and sync status are stored in the adjacent `title-state.json`. Both generated runtime data files are ignored by Git.

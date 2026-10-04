@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import signal
 import sys
-from pathlib import Path
 
 existing_logging_rules = os.environ.get("QT_LOGGING_RULES", "").strip()
 os.environ["QT_LOGGING_RULES"] = ";".join(
@@ -28,12 +27,14 @@ from app.nr_challenge_tracker.history import HistoryRepository, default_history_
 from app.nr_challenge_tracker.i18n import resolve_language, tr
 from app.nr_challenge_tracker.monitor import RecognitionMonitor
 from app.nr_challenge_tracker.recognition import RecognitionEngine
+from app.nr_challenge_tracker.runtime_paths import application_root, resource_root
 from app.nr_challenge_tracker.sessions import SessionService
 from app.nr_challenge_tracker.settings import SettingsRepository
 from app.nr_challenge_tracker.title_state import TitleState
 from app.nr_challenge_tracker.ui import TrackerWindow
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = application_root()
+RESOURCES = resource_root()
 
 
 def main() -> int:
@@ -45,9 +46,9 @@ def main() -> int:
     interrupt_timer.timeout.connect(lambda: None)
     interrupt_timer.start(250)
     try:
-        project_config, settings = load_project_settings(ROOT)
+        project_config, settings = load_project_settings(ROOT, assets_root=RESOURCES)
         language = resolve_language(settings.language)
-        engine = RecognitionEngine(ROOT, project_config)
+        engine = RecognitionEngine(RESOURCES, project_config)
         history_path = default_history_path(ROOT)
         sessions = SessionService(
             HistoryRepository(

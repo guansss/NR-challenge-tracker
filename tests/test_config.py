@@ -51,6 +51,16 @@ class LanguageConfigTests(unittest.TestCase):
 
         self.assertEqual(settings.eligible_nightfarer, "recluse")
 
+    def test_manifest_can_be_loaded_from_separate_asset_root(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory), assets_root=ROOT)[1]
+
+        self.assertEqual(settings.eligible_nightfarer, "executor")
+
     def test_eligible_nightfarer_rejects_display_names(self) -> None:
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
         config["streak"]["eligible_nightfarer"] = "Recluse"

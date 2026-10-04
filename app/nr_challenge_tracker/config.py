@@ -112,7 +112,9 @@ class AppSettings:
     hud_recent_sessions: int
 
 
-def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
+def load_project_settings(
+    root: Path, *, assets_root: Path | None = None
+) -> tuple[dict[str, Any], AppSettings]:
     path = root / "config.yaml"
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -122,7 +124,9 @@ def load_project_settings(root: Path) -> tuple[dict[str, Any], AppSettings]:
         config = _ProjectConfig.model_validate(data)
     except ValidationError as error:
         raise ValueError(f"Invalid application configuration: {error}") from error
-    available_nightfarers = _load_available_nightfarers(root, config.paths)
+    available_nightfarers = _load_available_nightfarers(
+        assets_root or root, config.paths
+    )
     if config.streak.eligible_nightfarer not in available_nightfarers:
         raise ValueError(
             "Invalid application configuration: eligible_nightfarer "

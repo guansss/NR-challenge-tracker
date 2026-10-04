@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 from .i18n import localized_name, tr
 from .models import NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
+from .runtime_paths import resource_root
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
 from .streak import StreakStats
 from .title_state import TitleState
@@ -54,7 +55,7 @@ def _play_screen_cue(screen: str) -> None:
     if player is None:
         player = QMediaPlayer()
         player.setAudioOutput(QAudioOutput(player))
-        sound_path = Path(__file__).resolve().parents[2] / "assets" / "sound" / filename
+        sound_path = resource_root() / "assets" / "sound" / filename
         player.setSource(QUrl.fromLocalFile(str(sound_path)))
         _SCREEN_CUE_PLAYERS[screen] = player
     player.setPosition(0)
