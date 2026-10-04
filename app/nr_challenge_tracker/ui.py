@@ -242,7 +242,7 @@ class TrackerWindow(QMainWindow):
         self._history_sessions: tuple[Session, ...] | None = None
         self.setWindowTitle(tr(language, "app.title"))
         self.setWindowFlags(
-            Qt.WindowType.Tool
+            Qt.WindowType.Window
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
         )
