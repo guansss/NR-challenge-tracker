@@ -23,7 +23,7 @@ Set `language` in `config.yaml` to `auto`, `en`, or `zh`. With `auto`, the app c
 
 Recognition ROIs, confidence thresholds, and sampling intervals are configured separately in `config.yaml`; the supplied values are starting points calibrated against the included 2560x1440 screenshot set. The app validates runtime settings and binds the local API only to a loopback address.
 
-For Bilibili title updates, set `bilibili.room_id` to the target live-room ID and install `app/integrations/bilibili.user.js` in Tampermonkey. Sign in to Bilibili in the same browser profile. The userscript polls `http://127.0.0.1:5678/api/streak`; it does not store cookies or CSRF tokens in the tracker. The title limit in config is a guardrail and still needs confirmation against Bilibili's current account rules and update response.
+For Bilibili title updates, install `app/integrations/bilibili.user.js` in Tampermonkey and open Bilibili's live-center page (`https://link.bilibili.com/p/center/index#/my-room/start-live`) while signed in to the account whose room title should change. The userscript polls the local tracker at `http://127.0.0.1:5678/api/streak` and updates the title by manipulating the page's room-title editor. Ensure the correct account and room are open. The configured title limit is a guardrail; confirm that the generated title is accepted by the target account.
 
 ## Checks
 
@@ -41,4 +41,4 @@ Run the unit suite, type checker, and offline recognition evaluator from the pro
 
 ## Validation still required
 
-The supplied screenshots establish offline recognition behavior, not live-game accuracy. Confirm capture against the actual game display mode, gather additional result captures for underrepresented outcomes and variants, and benchmark CPU, memory, and game frame-rate impact during a representative session. Verify the Bilibili endpoint fields, authentication/CSRF handling, response schema, and title restriction with the target account before relying on automatic title changes.
+The supplied screenshots establish offline recognition behavior, not live-game accuracy. Confirm capture against the actual game display mode, gather additional result captures for underrepresented outcomes and variants, and benchmark CPU, memory, and game frame-rate impact during a representative session. Before relying on automatic Bilibili title updates, confirm the userscript can find and save the room-title editor on the live-center page and that the target account accepts the generated title.
