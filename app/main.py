@@ -10,7 +10,12 @@ from pathlib import Path
 existing_logging_rules = os.environ.get("QT_LOGGING_RULES", "").strip()
 os.environ["QT_LOGGING_RULES"] = ";".join(
     rule
-    for rule in (existing_logging_rules, "qt.multimedia.ffmpeg=false")
+    for rule in (
+        existing_logging_rules,
+        "qt.multimedia.ffmpeg*.debug=false",
+        "qt.multimedia.ffmpeg*.info=false",
+        "qt.multimedia.ffmpeg*.warning=false",
+    )
     if rule
 )
 
