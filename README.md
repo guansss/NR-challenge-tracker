@@ -1,77 +1,120 @@
 # Nightreign Challenge Tracker
 
-Windows desktop HUD and game session tracker for Nightreign winning streak challenges.
+Nightreign Challenge Tracker is a small Windows desktop HUD that watches the
+Nightreign game window, records challenge runs, and keeps track of your streak.
+You can also correct a run by hand if the app could not recognize its result.
 
-## Run
+<center><img src="docs/hud.png" alt="HUD"></center>
 
-From the repository root, install dependencies into the project virtual environment and launch the app:
+## Install and start
+
+1. Open the [latest GitHub release](https://github.com/guansss/NR-challenge-tracker/releases/latest).
+2. Download the `Nightreign-Challenge-Tracker-...-windows.zip` file from the
+   release's **Assets**.
+3. Extract the ZIP into a folder you can write to, such as a folder in
+   **Documents**. Keep the files together; the ZIP contains the app and its
+   settings file.
+4. Double-click **Nightreign Challenge Tracker.exe** to start the tracker.
+5. Start Nightreign, or leave it running. Keep its game window visible and
+   unminimized while you play.
+
+The HUD stays above other windows. Drag it to move it and use the corner grip to
+resize it. It shows your current streak, recent runs, and whether the game is
+being monitored.
+
+## While you play
+
+The tracker looks for the Nightreign game window and watches for preparation
+and result screens. It records runs automatically when it recognizes them.
+Recognition depends on the game window being visible and using a supported
+window-capture mode.
+
+- **Pause** temporarily stops watching the game; choose **Resume** to continue.
+- If a run is missed or recorded incorrectly, select it in the recent-runs list
+  and choose **Resolve**. Check the character, boss, variant, outcome, and times,
+  then save the correction.
+- **Skip** discards the selected run (or the current run if none is selected),
+  excluding it from streak calculations.
+- **Lock** lets mouse clicks pass through the HUD so you can click the game
+  underneath it. Press **Ctrl+Shift+L** to unlock it.
+- Close the HUD with **×** when you are finished. Your run history is saved
+  automatically.
+
+## Optional: sync your Bilibili live-room title
+
+Title syncing is optional. The tracker can update your room title to include
+your streak, but this requires the Tampermonkey browser extension and an
+additional userscript.
+
+1. Install Tampermonkey in your browser.
+2. Open [`app/integrations/bilibili.user.js`](app/integrations/bilibili.user.js)
+   from this repository and install it in Tampermonkey.
+3. Start the tracker and sign in to the Bilibili account whose room title you
+   want to change.
+4. Open the [Bilibili live center](https://link.bilibili.com/p/center/index#/my-room/start-live)
+   for that account. Keep the tracker running while you want syncing to happen,
+   and keep the live-center tab in the foreground. If the tab is in the
+   background, the browser may suspend its update task while the tab is asleep.
+
+Check the HUD's **Title sync** status. Confirm that the correct account and room
+are open, and check the title in Bilibili after syncing.
+
+## Your files and settings
+
+The tracker keeps its files in the folder where you extracted it:
+
+- `history.yaml` stores your run history.
+- `config.yaml` contains settings such as language and the challenge target.
+- `state.json` stores the HUD's size and position.
+
+These files are local to that folder. To update the app, back up your folder
+first, then extract the new release into it. Keep your existing `history.yaml`
+and `state.json`; if you changed `config.yaml`, keep a copy of it too.
+
+By default, the interface language follows your Windows language (English or
+Chinese), and the streak goal is 100 wins with Executor. To change settings,
+close the tracker and edit `config.yaml` with a plain-text editor. Be careful
+not to change other settings unless you know what they do.
+
+## Troubleshooting
+
+- **The HUD says the game window is unavailable:** Make sure Nightreign is
+  running, visible, and not minimized.
+- **The tracker does not recognize screens:** Keep the game visible and use a
+  supported window-capture mode. You can pause and resume monitoring from the
+  HUD.
+- **A run has the wrong character, boss, or outcome:** Select the run in the
+  recent-runs list and use **Resolve** to correct it.
+- **Bilibili title syncing is not working:** Make sure the tracker is running,
+  Tampermonkey is enabled, and the correct Bilibili account's live-center page
+  is open.
+
+## For developers
+
+To run from source on Windows, install the project dependencies and start the
+app from the repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m app.main
 ```
 
-## Build a portable Windows package
-
-Build on Windows using the project's virtual environment:
+To build a portable package:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 .\.venv\Scripts\python.exe .\tools\build_release.py
 ```
 
-The project version is set in `pyproject.toml`; the build script creates
-`dist\Nightreign-Challenge-Tracker-v<version>-windows.zip`.
+The package is created in `dist` as
+`Nightreign-Challenge-Tracker-v<version>-windows.zip`. The version is set in
+`pyproject.toml`. A GitHub Release is published automatically when a matching
+`v<version>` tag is pushed.
 
-This uses PyInstaller's one-file mode: the executable contains Python, its
-dependencies, and the runtime assets. Distribute the ZIP and extract both files
-into a writable folder before running `Nightreign Challenge Tracker.exe`.
-Python is not required on the target PC. `config.yaml` remains editable, and
-`history.yaml` and `state.json` are created or updated
-beside the executable. The package omits the offline screenshot dataset.
-
-## GitHub releases
-
-Pushing a version tag matching the version in `pyproject.toml` automatically
-builds the Windows package and publishes it as a GitHub Release. For example,
-with version `0.1.0`, push the `v0.1.0` tag:
-
-```powershell
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Download the `Nightreign-Challenge-Tracker-v0.1.0-windows.zip` asset from that
-release's Assets section.
-
-The application captures only a visible window whose title contains `capture.target_window` from `config.yaml`. Keep Nightreign in a supported window-capture mode. If capture is unavailable, the app preserves any attempt as interrupted rather than recording a loss.
-
-Session history is stored in `history.yaml` at the project root. HUD geometry and desired-title revision/sync status are stored together in the adjacent `state.json`.
-
-Accepted preparation and result screens are also saved as annotated PNGs under `debug/screenshots/`. Filenames include the 1-based attempt number and recognized identity; an existing file for the same identity is left unchanged.
-
-## Configuration
-
-Set `language` in `config.yaml` to `auto`, `en`, or `zh`. With `auto`, the app checks the system's preferred UI languages in order and uses the first supported language; if neither English nor Chinese is listed, it falls back to English. UI translations are grouped by feature in `assets/translations.yaml`.
-
-Recognition ROIs, confidence thresholds, and sampling intervals are configured separately in `config.yaml`; the supplied values are starting points calibrated against the included 2560x1440 screenshot set. The app validates runtime settings and binds the local API only to a loopback address.
-
-For Bilibili title updates, install `app/integrations/bilibili.user.js` in Tampermonkey and open Bilibili's live-center page (`https://link.bilibili.com/p/center/index#/my-room/start-live`) while signed in to the account whose room title should change. The userscript polls the local tracker at `http://127.0.0.1:5678/api/streak` and updates the title by manipulating the page's room-title editor. Ensure the correct account and room are open. The configured title limit is a guardrail; confirm that the generated title is accepted by the target account.
-
-## Checks
-
-Run the unit suite, type checker, and offline recognition evaluator from the project environment:
+Run the unit tests, type checker, and offline recognition evaluator with:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 .\.venv\Scripts\python.exe -m pyrefly check
 .\.venv\Scripts\python.exe .\tools\recognize_screenshots.py --dataset
-.\.venv\Scripts\python.exe .\tools\recognize_screenshots.py --dataset --resolution 1920x1080
-.\.venv\Scripts\python.exe .\tools\recognize_screenshots.py --dataset --resolution 2560x1440
 ```
-
-`tools/extract_templates.py` remains the offline dataset asset builder and validator.
-
-## Validation still required
-
-The supplied screenshots establish offline recognition behavior, not live-game accuracy. Confirm capture against the actual game display mode, gather additional result captures for underrepresented outcomes and variants, and benchmark CPU, memory, and game frame-rate impact during a representative session. Before relying on automatic Bilibili title updates, confirm the userscript can find and save the room-title editor on the live-center page and that the target account accepts the generated title.
