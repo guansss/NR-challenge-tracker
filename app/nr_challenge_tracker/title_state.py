@@ -2,46 +2,33 @@
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
-from pathlib import Path
 from threading import RLock
 from typing import Any
 
-from .history import HistoryError
+from .state import SYNC_STATES, PersistedTitleState, StateRepository
 from .streak import StreakStats
 
-SYNC_STATES = frozenset(
-    {
-        "sync.synced",
-        "sync.pending",
-        "sync.retrying",
-        "sync.authentication_required",
-        "sync.title_rejected",
-        "sync.offline",
-    }
-)
+
 class TitleState:
     def __init__(
         self,
-        path: Path,
+        repository: StateRepository,
         title_template: str,
         max_characters: int,
         room_id: int | None,
         polling_interval_seconds: int = 5,
     ) -> None:
-        self.path = path
+        self.repository = repository
         self.title_template = title_template
         self.max_characters = max_characters
         self.room_id = room_id
         self.polling_interval_seconds = polling_interval_seconds
         self._lock = RLock()
-        self._revision = 0
-        self._desired_title = ""
-        self._sync_status = "sync.pending"
-        self._sync_message = ""
-        self._load()
+        persisted = repository.load_title_state()
+        self._revision = persisted.revision
+        self._desired_title = persisted.desired_title
+        self._sync_status = persisted.sync_status
+        self._sync_message = persisted.sync_message
 
     def update(self, stats: StreakStats) -> dict[str, Any]:
         try:
@@ -91,61 +78,12 @@ class TitleState:
             self._save()
             return True
 
-    def _load(self) -> None:
-        if not self.path.exists():
-            return
-        try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
-            if not isinstance(data, dict):
-                raise ValueError("title state must be an object")
-            revision = data.get("revision")
-            title = data.get("desired_title")
-            status = data.get("sync_status", "sync.pending")
-            if (
-                isinstance(revision, bool)
-                or not isinstance(revision, int)
-                or revision < 0
-                or not isinstance(title, str)
-                or not isinstance(status, str)
-                or status not in SYNC_STATES
-            ):
-                raise ValueError("invalid title state fields")
-            self._revision = revision
-            self._desired_title = title
-            self._sync_status = status
-            self._sync_message = str(data.get("sync_message", ""))[:200]
-        except (OSError, json.JSONDecodeError, ValueError) as error:
-            raise HistoryError(
-                f"Could not load title state at {self.path}: {error}"
-            ) from error
-
     def _save(self) -> None:
-        document = {
-            "revision": self._revision,
-            "desired_title": self._desired_title,
-            "sync_status": self._sync_status,
-            "sync_message": self._sync_message,
-        }
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path: Path | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                dir=self.path.parent,
-                prefix=f".{self.path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary_file:
-                temporary_path = Path(temporary_file.name)
-                json.dump(document, temporary_file, ensure_ascii=False)
-                temporary_file.flush()
-                os.fsync(temporary_file.fileno())
-            os.replace(temporary_path, self.path)
-        except OSError as error:
-            raise HistoryError(
-                f"Could not save title state at {self.path}: {error}"
-            ) from error
-        finally:
-            if temporary_path is not None and temporary_path.exists():
-                temporary_path.unlink()
+        self.repository.save_title_state(
+            PersistedTitleState(
+                revision=self._revision,
+                desired_title=self._desired_title,
+                sync_status=self._sync_status,
+                sync_message=self._sync_message,
+            )
+        )

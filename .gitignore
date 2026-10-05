@@ -1,8 +1,7 @@
 .vscode/
 
-/settings.yaml
 /history.yaml
-/title-state.json
+/state.json
 debug/
 
 # Byte-compiled / optimized / DLL files

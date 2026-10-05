@@ -27,7 +27,7 @@ This uses PyInstaller's one-file mode: the executable contains Python, its
 dependencies, and the runtime assets. Distribute the ZIP and extract both files
 into a writable folder before running `Nightreign Challenge Tracker.exe`.
 Python is not required on the target PC. `config.yaml` remains editable, and
-`history.yaml`, `title-state.json`, and `settings.yaml` are created or updated
+`history.yaml` and `state.json` are created or updated
 beside the executable. The package omits the offline screenshot dataset.
 
 ## GitHub releases
@@ -46,7 +46,7 @@ release's Assets section.
 
 The application captures only a visible window whose title contains `capture.target_window` from `config.yaml`. Keep Nightreign in a supported window-capture mode. If capture is unavailable, the app preserves any attempt as interrupted rather than recording a loss.
 
-Session history is stored in `history.yaml` at the project root. Desired-title revision and sync status are stored in the adjacent `title-state.json`. Both generated runtime data files are ignored by Git.
+Session history is stored in `history.yaml` at the project root. HUD geometry and desired-title revision/sync status are stored together in the adjacent `state.json`.
 
 Accepted preparation and result screens are also saved as annotated PNGs under `debug/screenshots/`. Filenames include the 1-based attempt number and recognized identity; an existing file for the same identity is left unchanged.
 

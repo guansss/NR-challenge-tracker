@@ -29,7 +29,7 @@ from app.nr_challenge_tracker.monitor import RecognitionMonitor
 from app.nr_challenge_tracker.recognition import RecognitionEngine
 from app.nr_challenge_tracker.runtime_paths import application_root, resource_root
 from app.nr_challenge_tracker.sessions import SessionService
-from app.nr_challenge_tracker.settings import SettingsRepository
+from app.nr_challenge_tracker.state import StateRepository
 from app.nr_challenge_tracker.title_state import TitleState
 from app.nr_challenge_tracker.ui import TrackerWindow
 
@@ -62,8 +62,9 @@ def main() -> int:
                 if entry.get("everdark_available_in_dataset")
             },
         )
+        state_repository = StateRepository(ROOT / "state.json")
         title_state = TitleState(
-            history_path.with_name("title-state.json"),
+            state_repository,
             settings.title_template,
             settings.title_max_characters,
             settings.room_id if settings.bilibili_enabled else None,
@@ -86,7 +87,6 @@ def main() -> int:
             result_interval_ms=settings.result_interval_ms,
             confirmations=settings.consecutive_confirmations,
         )
-        settings_repository = SettingsRepository(ROOT / "settings.yaml")
         window = TrackerWindow(
             sessions,
             monitor,
@@ -99,9 +99,9 @@ def main() -> int:
             recent_sessions=settings.hud_recent_sessions,
             language=language,
             eligible_nightfarer=settings.eligible_nightfarer,
-            initial_geometry=settings_repository.load_hud_geometry(),
+            initial_geometry=state_repository.load_hud_geometry(),
         )
-        window.geometry_saved.connect(settings_repository.save_hud_geometry)
+        window.geometry_saved.connect(state_repository.save_hud_geometry)
         api.start()
         window.show()
         monitor.start()

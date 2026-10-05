@@ -567,7 +567,7 @@ For a target of 100, the title template shall therefore render the capped challe
 
 The application shall store structured session history in a local YAML file.
 
-The history file shall reside at the project root beside `config.yaml`, not in the game installation directory or the Windows user's application-data directory. Desired-title revision and synchronization status shall be persisted in a separate project-root `title-state.json` file.
+The history file shall reside at the project root beside `config.yaml`, not in the game installation directory or the Windows user's application-data directory. Mutable runtime state, including HUD geometry and desired-title revision and synchronization status, shall be persisted in a Pydantic-validated project-root `state.json` file. Invalid state data shall be ignored and replaced by defaults on the next state save.
 
 The repository shall:
 
