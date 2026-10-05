@@ -2,7 +2,10 @@
 
 Nightreign Challenge Tracker is a small Windows desktop HUD that watches the
 Nightreign game window, records challenge runs, and keeps track of your streak.
-You can also correct a run by hand if the app could not recognize its result.
+
+It runs image recognition on captured game window and does not interact
+with game memory or modify game files, so it is not expected to affect the
+game's anti-cheat.
 
 <p align=center><img src="docs/hud.png" alt="HUD"></p>
 
@@ -26,8 +29,14 @@ being monitored.
 
 The tracker looks for the Nightreign game window and watches for preparation
 and result screens. It records runs automatically when it recognizes them.
-Recognition depends on the game window being visible and using a supported
-window-capture mode.
+
+IMPORTANT: On the result screen (you'll hear a "ding" sound), scale the map
+to its minimum size so the Nightlord icon is fully visible for recognition.
+You can inspect the real-time recognition result in the HUD.
+
+![Result screen](docs/result-screen.jpg)
+
+HUD controls:
 
 - **Pause** temporarily stops watching the game; choose **Resume** to continue.
 - If a run is missed or recorded incorrectly, select it in the recent-runs list
@@ -94,6 +103,33 @@ not to change other settings unless you know what they do.
 - **Bilibili title syncing is not working:** Make sure the tracker is running,
   Tampermonkey is enabled, and the correct Bilibili account's live-center page
   is open.
+
+## Game language support
+
+Automatic recognition currently supports the Chinese version of Nightreign. To
+use automatic recognition with another language, you will need to provide your
+own result-screen screenshots in that language and regenerate the recognition
+templates. This requires the project source and a Python environment; it is an
+advanced setup and is not a setting in the portable app.
+
+Put the screenshots in `assets/dataset/result-screens`. The dataset should
+include:
+
+- At least one result screenshot for every Nightlord and every Everdark version.
+- At least one screenshot for each outcome: first day, second day, final day,
+  and final-day victory.
+- The map scaled to its minimum size, without moving the cursor.
+- Screenshots from a regular map, not the Great Hollow map.
+- `.jpg` filenames in the format
+  `<nightlord>(-everdark)_<day1|day2|day3|victory>.jpg`. For example,
+  `adel_day1.jpg` or `adel-everdark_victory.jpg`.
+
+From the project root, regenerate the templates using the project's virtual
+environment:
+
+```powershell
+.\.venv\Scripts\python.exe .\tools\extract_templates.py
+```
 
 ## For developers
 
