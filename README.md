@@ -59,6 +59,12 @@ additional userscript.
 Check the HUD's **Title sync** status. Confirm that the correct account and room
 are open, and check the title in Bilibili after syncing.
 
+Want a different room title? Before starting the tracker, edit
+`bilibili.title_template` in `config.yaml`. Use `{current_streak}` for your
+current streak and `{target}` for your goal. For example:
+`Nightreign Challenge ({current_streak}/{target})`. Keep the finished title within the
+`bilibili.title_max_characters` limit.
+
 ## Your files and settings
 
 The tracker keeps its files in the folder where you extracted it:
