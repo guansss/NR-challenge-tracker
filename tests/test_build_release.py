@@ -9,6 +9,7 @@ from tools.build_release import (
     ROOT,
     create_archive,
     read_version,
+    stage_userscript,
     validate_release_tag,
     write_pyinstaller_spec,
 )
@@ -50,6 +51,18 @@ class BuildReleaseTests(unittest.TestCase):
                     archive.namelist(),
                     ["Nightreign Challenge Tracker.exe", "config.yaml"],
                 )
+
+    def test_stages_versioned_bilibili_userscript(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            dist_dir = Path(temporary_directory)
+
+            userscript_path = stage_userscript(dist_dir, "0.1.0")
+
+            self.assertEqual(userscript_path.name, "bilibili-0.1.0.user.js")
+            self.assertEqual(
+                userscript_path.read_bytes(),
+                (ROOT / "app" / "integrations" / "bilibili.user.js").read_bytes(),
+            )
 
 
 if __name__ == "__main__":

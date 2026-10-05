@@ -129,13 +129,25 @@ def create_archive(dist_dir: Path, version: str) -> Path:
     return archive_path
 
 
+def stage_userscript(dist_dir: Path, version: str) -> Path:
+    source = ROOT / "app" / "integrations" / "bilibili.user.js"
+    if not source.is_file():
+        raise FileNotFoundError(f"Bilibili userscript not found: {source}")
+
+    userscript_path = dist_dir / f"bilibili-{version}.user.js"
+    shutil.copy2(source, userscript_path)
+    return userscript_path
+
+
 def main() -> int:
     version = read_version()
     validate_release_tag(version, os.environ.get("GITHUB_REF_NAME"))
     build_executable()
     shutil.copy2(ROOT / "config.yaml", DIST_DIR / "config.yaml")
     archive_path = create_archive(DIST_DIR, version)
+    userscript_path = stage_userscript(DIST_DIR, version)
     print(f"Created {archive_path}")
+    print(f"Created {userscript_path}")
     return 0
 
 

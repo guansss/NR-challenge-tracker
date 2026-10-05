@@ -47,8 +47,8 @@ your streak, but this requires the Tampermonkey browser extension and an
 additional userscript.
 
 1. Install Tampermonkey in your browser.
-2. Open [`app/integrations/bilibili.user.js`](app/integrations/bilibili.user.js)
-   from this repository and install it in Tampermonkey.
+2. Download `bilibili.user.js` from the latest GitHub release and
+   install it in Tampermonkey.
 3. Start the tracker and sign in to the Bilibili account whose room title you
    want to change.
 4. Open the [Bilibili live center](https://link.bilibili.com/p/center/index#/my-room/start-live)
@@ -107,7 +107,8 @@ To build a portable package:
 ```
 
 The package is created in `dist` as
-`Nightreign-Challenge-Tracker-v<version>-windows.zip`. The version is set in
+`Nightreign-Challenge-Tracker-v<version>-windows.zip`, alongside the
+`bilibili-<version>.user.js` userscript asset. The version is set in
 `pyproject.toml`. A GitHub Release is published automatically when a matching
 `v<version>` tag is pushed.
 
