@@ -37,8 +37,6 @@ capture:
 streak:
   target: 100
   eligible_nightfarer: executor
-  failure_rule: "all_nonvictories"
-  cap_at_target: true
 
 api:
   host: "127.0.0.1"
@@ -46,7 +44,6 @@ api:
 
 bilibili:
   enabled: true
-  room_id: null
   title_template: "Nightreign ({current_streak}/{target})"
   title_max_characters: 30
   polling_interval_seconds: 5
@@ -55,6 +52,4 @@ hud:
   enabled: true
   opacity: 0.10
   font_size: 16
-  width: 420
   recent_sessions: 10
-  show_recent_sessions: true

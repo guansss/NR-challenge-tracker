@@ -15,13 +15,11 @@ class TitleState:
         repository: StateRepository,
         title_template: str,
         max_characters: int,
-        room_id: int | None,
         polling_interval_seconds: int = 5,
     ) -> None:
         self.repository = repository
         self.title_template = title_template
         self.max_characters = max_characters
-        self.room_id = room_id
         self.polling_interval_seconds = polling_interval_seconds
         self._lock = RLock()
         persisted = repository.load_title_state()
@@ -59,7 +57,6 @@ class TitleState:
                 "target": stats.target if stats else None,
                 "desired_title": self._desired_title,
                 "revision": self._revision,
-                "room_id": self.room_id,
                 "polling_interval_seconds": self.polling_interval_seconds,
                 "sync_status": self._sync_status,
                 "sync_message": self._sync_message,

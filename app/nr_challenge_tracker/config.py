@@ -43,8 +43,6 @@ class _CaptureConfig(_ConfigSection):
 class _StreakConfig(_ConfigSection):
     target: int = Field(gt=0)
     eligible_nightfarer: str
-    failure_rule: Literal["all_nonvictories"]
-    cap_at_target: bool
 
 
 class _ApiConfig(_ConfigSection):
@@ -54,7 +52,6 @@ class _ApiConfig(_ConfigSection):
 
 class _BilibiliConfig(_ConfigSection):
     enabled: bool
-    room_id: int | None = None
     title_template: NonEmptyString
     title_max_characters: int = Field(gt=0)
     polling_interval_seconds: int = Field(gt=0)
@@ -64,9 +61,7 @@ class _HudConfig(_ConfigSection):
     enabled: bool
     opacity: float = Field(ge=0.1, le=1.0)
     font_size: int = Field(gt=0)
-    width: int = Field(gt=0)
     recent_sessions: int = Field(gt=0)
-    show_recent_sessions: bool
 
 
 class _ProjectConfig(_ConfigSection):
@@ -102,13 +97,11 @@ class AppSettings:
     api_host: str
     api_port: int
     bilibili_enabled: bool
-    room_id: int | None
     title_template: str
     title_max_characters: int
     polling_interval_seconds: int
     hud_opacity: float
     hud_font_size: int
-    hud_width: int
     hud_recent_sessions: int
 
 
@@ -146,13 +139,11 @@ def load_project_settings(
         api_host=config.api.host,
         api_port=config.api.port,
         bilibili_enabled=config.bilibili.enabled,
-        room_id=config.bilibili.room_id,
         title_template=config.bilibili.title_template,
         title_max_characters=config.bilibili.title_max_characters,
         polling_interval_seconds=config.bilibili.polling_interval_seconds,
         hud_opacity=config.hud.opacity,
         hud_font_size=config.hud.font_size,
-        hud_width=config.hud.width,
         hud_recent_sessions=config.hud.recent_sessions,
     )
     return data, settings

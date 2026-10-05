@@ -67,7 +67,6 @@ def main() -> int:
             state_repository,
             settings.title_template,
             settings.title_max_characters,
-            settings.room_id if settings.bilibili_enabled else None,
             settings.polling_interval_seconds,
         )
         api = StreakApiServer(
@@ -95,7 +94,6 @@ def main() -> int:
             [entry["id"] for entry in engine.manifest["nightlords"]],
             opacity=settings.hud_opacity,
             font_size=settings.hud_font_size,
-            width=settings.hud_width,
             recent_sessions=settings.hud_recent_sessions,
             language=language,
             eligible_nightfarer=settings.eligible_nightfarer,

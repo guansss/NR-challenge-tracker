@@ -760,14 +760,11 @@ hud:
   enabled: true
   opacity: 0.85
   font_size: 16
-  width: 520
-  show_recent_sessions: true
+  recent_sessions: 10
 
 streak:
   target: 100
   eligible_nightfarer: "Executor"
-  failure_rule: "all_nonvictories"
-  cap_at_target: true
 
 api:
   host: "127.0.0.1"
@@ -775,7 +772,6 @@ api:
 
 bilibili:
   enabled: true
-  room_id: null
   title_template: "Nightreign Winning Streak Challenge ({current_streak}/100)"
   polling_interval_seconds: 5
 ```

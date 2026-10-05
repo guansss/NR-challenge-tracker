@@ -74,7 +74,6 @@ class StateRepositoryTests(unittest.TestCase):
                 StateRepository(Path(directory) / "state.json"),
                 "Challenge ({current_streak}/{target})",
                 40,
-                123,
             )
             stats = StreakStats(4, 8, 20, 100, {})
 
@@ -88,12 +87,12 @@ class StateRepositoryTests(unittest.TestCase):
     def test_revision_and_sync_status_survive_restart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = StateRepository(Path(directory) / "state.json")
-            state = TitleState(repository, "{current_streak}/{target}", 40, 123)
+            state = TitleState(repository, "{current_streak}/{target}", 40)
             state.update(StreakStats(7, 7, 7, 100, {}))
             state.report_sync("sync.synced", 1)
 
             restarted = TitleState(
-                StateRepository(repository.path), "{current_streak}/{target}", 40, 123
+                StateRepository(repository.path), "{current_streak}/{target}", 40
             )
             view = restarted.update(StreakStats(7, 7, 7, 100, {}))
 
@@ -106,7 +105,6 @@ class StateRepositoryTests(unittest.TestCase):
                 StateRepository(Path(directory) / "state.json"),
                 "{current_streak}",
                 40,
-                None,
             )
             state.update(StreakStats(2, 2, 2, 100, {}))
 
@@ -115,7 +113,7 @@ class StateRepositoryTests(unittest.TestCase):
     def test_title_length_is_validated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = TitleState(
-                StateRepository(Path(directory) / "state.json"), "long title", 4, None
+                StateRepository(Path(directory) / "state.json"), "long title", 4
             )
 
             with self.assertRaisesRegex(ValueError, "exceeds configured limit"):
