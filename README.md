@@ -4,7 +4,7 @@ Nightreign Challenge Tracker is a small Windows desktop HUD that watches the
 Nightreign game window, records challenge runs, and keeps track of your streak.
 You can also correct a run by hand if the app could not recognize its result.
 
-<center><img src="docs/hud.png" alt="HUD"></center>
+<p align=center><img src="docs/hud.png" alt="HUD"></p>
 
 ## Install and start
 
