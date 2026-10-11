@@ -16,6 +16,7 @@ import cv2
 from .capture import WindowsWindowCapture, find_window_by_title, window_is_capturable
 from .models import NightlordVariant, Progress, Session, SessionStatus
 from .recognition import RecognitionEngine
+from .runtime_paths import application_root
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
 
 
@@ -63,6 +64,7 @@ class RecognitionMonitor:
         result_interval_ms: int = 200,
         confirmations: int = 3,
         debug_dir: Path | None = None,
+        debug_screenshots_enabled: bool = False,
     ) -> None:
         self.engine = engine
         self.sessions = sessions
@@ -88,14 +90,12 @@ class RecognitionMonitor:
         self._capture_ended = threading.Event()
         self._capture_error_detail = ""
         self._preparation_active = False
-        engine_root = getattr(engine, "root", None)
         self.debug_dir = (
             Path(debug_dir)
             if debug_dir is not None
-            else Path(engine_root) / "debug" / "screenshots"
-            if engine_root is not None
-            else None
+            else application_root() / "debug" / "screenshots"
         )
+        self.debug_screenshots_enabled = debug_screenshots_enabled
         self._debug_saved_paths: set[Path] = set()
         self._result_active = False
         self._pending_result: dict[str, Any] = {}
@@ -471,7 +471,11 @@ class RecognitionMonitor:
     def _save_debug_screenshot(
         self, image: Any, result: dict[str, Any], session: Session
     ) -> str | None:
-        if image is None or self.debug_dir is None:
+        if (
+            not self.debug_screenshots_enabled
+            or image is None
+            or self.debug_dir is None
+        ):
             return None
         screen = result.get("screen")
         if screen == "preparation":

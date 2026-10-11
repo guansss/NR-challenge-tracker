@@ -90,6 +90,8 @@ By default, the interface language follows your Windows language (English or
 Chinese), and the streak goal is 100 wins with Executor. To change settings,
 close the tracker and edit `config.yaml` with a plain-text editor. Be careful
 not to change other settings unless you know what they do.
+Debug screenshots are disabled by default. Set `debug.save_screenshots` to
+`true` to save them in `debug/screenshots` beside the app executable.
 
 ## Troubleshooting
 

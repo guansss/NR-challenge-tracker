@@ -325,6 +325,31 @@ class ResultMonitorTests(unittest.TestCase):
 
 
 class DebugScreenshotMonitorTests(unittest.TestCase):
+    def test_debug_screenshots_are_disabled_by_default(self) -> None:
+        result = {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            debug_dir = root / "debug" / "screenshots"
+            sessions = SessionService(
+                HistoryRepository(
+                    root / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine([result, result]),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+                debug_dir=debug_dir,
+            )
+
+            monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))
+            monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))
+
+            self.assertFalse(debug_dir.exists())
+
     def test_preparation_saves_after_confirmation_and_keeps_each_identity(self) -> None:
         results = [
             {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
@@ -347,6 +372,7 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
                 lambda update, status: None,
                 confirmations=2,
                 debug_dir=debug_dir,
+                debug_screenshots_enabled=True,
             )
 
             monitor._process(np.full((60, 100, 3), 1, dtype=np.uint8))
@@ -416,6 +442,7 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
                 lambda update, status: updates.append((update, status)),
                 confirmations=2,
                 debug_dir=debug_dir,
+                debug_screenshots_enabled=True,
             )
 
             monitor._process(np.full((60, 100, 3), 4, dtype=np.uint8))
@@ -453,6 +480,7 @@ class DebugScreenshotMonitorTests(unittest.TestCase):
                 lambda update, status: updates.append((update, status)),
                 confirmations=2,
                 debug_dir=blocked_path,
+                debug_screenshots_enabled=True,
             )
 
             monitor._process(np.zeros((60, 100, 3), dtype=np.uint8))

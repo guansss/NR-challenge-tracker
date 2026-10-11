@@ -85,6 +85,8 @@ def main() -> int:
             gameplay_interval_ms=settings.gameplay_interval_ms,
             result_interval_ms=settings.result_interval_ms,
             confirmations=settings.consecutive_confirmations,
+            debug_dir=ROOT / "debug" / "screenshots",
+            debug_screenshots_enabled=settings.debug_save_screenshots,
         )
         window = TrackerWindow(
             sessions,

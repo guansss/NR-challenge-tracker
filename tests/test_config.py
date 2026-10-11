@@ -31,6 +31,30 @@ class LanguageConfigTests(unittest.TestCase):
             path.write_text(yaml.safe_dump(config), encoding="utf-8")
             return load_project_settings(Path(directory))[1]
 
+    def test_debug_screenshots_default_to_disabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config.pop("debug")
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory))[1]
+
+        self.assertFalse(settings.debug_save_screenshots)
+
+    def test_debug_screenshots_can_be_enabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["debug"]["save_screenshots"] = True
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory))[1]
+
+        self.assertTrue(settings.debug_save_screenshots)
+
     def test_language_defaults_to_auto_for_old_config(self) -> None:
         self.assertEqual(self._load_with_language(None).language, "auto")
 

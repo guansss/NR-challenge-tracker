@@ -64,6 +64,10 @@ class _HudConfig(_ConfigSection):
     recent_sessions: int = Field(gt=0)
 
 
+class _DebugConfig(_ConfigSection):
+    save_screenshots: bool = False
+
+
 class _ProjectConfig(_ConfigSection):
     schema_version: Literal[1]
     language: Literal["auto", "en", "zh"] = "auto"
@@ -74,6 +78,7 @@ class _ProjectConfig(_ConfigSection):
     api: _ApiConfig
     bilibili: _BilibiliConfig
     hud: _HudConfig
+    debug: _DebugConfig = Field(default_factory=_DebugConfig)
 
     @field_validator("language", mode="before")
     @classmethod
@@ -103,6 +108,7 @@ class AppSettings:
     hud_opacity: float
     hud_font_size: int
     hud_recent_sessions: int
+    debug_save_screenshots: bool
 
 
 def load_project_settings(
@@ -145,6 +151,7 @@ def load_project_settings(
         hud_opacity=config.hud.opacity,
         hud_font_size=config.hud.font_size,
         hud_recent_sessions=config.hud.recent_sessions,
+        debug_save_screenshots=config.debug.save_screenshots,
     )
     return data, settings
 
