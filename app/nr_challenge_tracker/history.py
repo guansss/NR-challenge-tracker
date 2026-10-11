@@ -74,6 +74,27 @@ class HistoryRepository:
             self._write_document(snapshot)
             return snapshot
 
+    def update_challenge_settings(
+        self, sessions: Iterable[Session], *, target: int, eligible_nightfarer: str
+    ) -> HistorySnapshot:
+        if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
+            raise ValueError("History target must be a positive integer")
+        if not isinstance(eligible_nightfarer, str) or not eligible_nightfarer.strip():
+            raise ValueError("Eligible Nightfarer must be a non-empty string")
+        with self._lock:
+            old_target = self.default_target
+            old_eligible_nightfarer = self.eligible_nightfarer
+            self.default_target = target
+            self.eligible_nightfarer = eligible_nightfarer
+            try:
+                snapshot = self._snapshot(tuple(sessions), target)
+                self._write_document(snapshot)
+            except (OSError, ValueError, yaml.YAMLError):
+                self.default_target = old_target
+                self.eligible_nightfarer = old_eligible_nightfarer
+                raise
+            return snapshot
+
     def _snapshot(
         self, sessions: tuple[Session, ...], target: int
     ) -> HistorySnapshot:

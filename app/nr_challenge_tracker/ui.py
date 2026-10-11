@@ -37,6 +37,7 @@ from .models import NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
 from .runtime_paths import resource_root
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
+from .settings_dialog import SettingsDialog
 from .streak import StreakStats
 from .title_state import TitleState
 
@@ -60,6 +61,21 @@ def _play_screen_cue(screen: str) -> None:
         _SCREEN_CUE_PLAYERS[screen] = player
     player.setPosition(0)
     player.play()
+
+
+def _panel_stylesheet(alpha: int) -> str:
+    return (
+        f"QWidget#panel {{ background: rgba(18, 23, 25, {alpha}); "
+        "border: 1px solid rgba(167, 190, 174, 110); border-radius: 6px; }"
+        "QLabel { color: #e9eee8; }"
+        "QPushButton { color: #e9eee8; background: transparent; border: 1px solid transparent; "
+        "padding: 5px 9px; border-radius: 3px; }"
+        "QPushButton:hover { background: rgba(73, 100, 87, 150); }"
+        'QPushButton#lockButton[locked="true"]:hover { background: transparent; }'
+        "QListWidget { color: #e9eee8; background: transparent; border: 0; }"
+        "QListWidget::item { border: 0; padding-left: 0; }"
+        "QListWidget::item:selected { background: rgba(73, 100, 87, 180); }"
+    )
 
 
 class ResolveSessionDialog(QDialog):
@@ -209,6 +225,7 @@ class ToggleSelectionListWidget(QListWidget):
 class TrackerWindow(QMainWindow):
     updated = Signal(object, str)
     geometry_saved = Signal(int, int, int, int)
+    settings_saved = Signal(object)
     _LOCK_HOTKEY_ID = 1
 
     def __init__(
@@ -226,6 +243,10 @@ class TrackerWindow(QMainWindow):
         language: str = "en",
         eligible_nightfarer: str,
         initial_geometry: tuple[int, int, int, int] | None = None,
+        defaults_config: dict[str, Any] | None = None,
+        config: dict[str, Any] | None = None,
+        config_root: Path | None = None,
+        assets_root: Path | None = None,
     ) -> None:
         super().__init__()
         self.sessions = sessions
@@ -234,6 +255,10 @@ class TrackerWindow(QMainWindow):
         self.language = language
         self.nightfarers = nightfarers
         self.nightlords = nightlords
+        self._defaults_config = defaults_config
+        self._config = config
+        self._config_root = config_root
+        self._assets_root = assets_root
         self.recent_sessions = recent_sessions
         self._font_size = font_size
         self._drag_offset = None
@@ -255,38 +280,34 @@ class TrackerWindow(QMainWindow):
             self.setGeometry(*initial_geometry)
 
         panel = QWidget()
+        self._panel = panel
         panel_font = panel.font()
-        panel_font.setPixelSize(font_size)
         panel.setFont(panel_font)
         alpha = round(opacity * 255)
-        panel.setStyleSheet(
-            f"QWidget#panel {{ background: rgba(18, 23, 25, {alpha}); "
-            "border: 1px solid rgba(167, 190, 174, 110); border-radius: 6px; }"
-            "QLabel { color: #e9eee8; }"
-            "QPushButton { color: #e9eee8; background: transparent; border: 1px solid transparent; "
-            "padding: 5px 9px; border-radius: 3px; }"
-            "QPushButton:hover { background: rgba(73, 100, 87, 150); }"
-            'QPushButton#lockButton[locked="true"]:hover { background: transparent; }'
-            "QListWidget { color: #e9eee8; background: transparent; border: 0; }"
-            "QListWidget::item { border: 0; padding-left: 0; }"
-            "QListWidget::item:selected { background: rgba(73, 100, 87, 180); }"
-        )
+        panel.setStyleSheet(_panel_stylesheet(alpha))
         panel.setObjectName("panel")
         layout = QVBoxLayout(panel)
+        self._panel_layout = layout
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(round(font_size * 0.8))
 
         header = QHBoxLayout()
         self.heading = QLabel(tr(language, "hud.heading"))
-        self.heading.setFont(panel_font)
         self.heading.setStyleSheet("font-weight: 700; color: #b5d6c1;")
-        close_button = QPushButton("×")
-        close_button.setFont(panel_font)
-        close_button.setFixedSize(28, 28)
-        close_button.clicked.connect(self.close)
+        self.close_button = QPushButton("×")
+        self.close_button.setFixedSize(28, 28)
+        self.close_button.clicked.connect(self.close)
+        self.settings_button = QPushButton(tr(language, "common.settings"))
+        self.settings_button.clicked.connect(self._open_settings)
+        self.settings_button.setEnabled(
+            defaults_config is not None
+            and config is not None
+            and config_root is not None
+            and assets_root is not None
+        )
         header.addWidget(self.heading)
         header.addStretch(1)
-        header.addWidget(close_button)
+        header.addWidget(self.settings_button)
+        header.addWidget(self.close_button)
         layout.addLayout(header)
 
         self.goal_label = QLabel(
@@ -296,36 +317,22 @@ class TrackerWindow(QMainWindow):
                 nightfarer=localized_name(language, "nightfarers", eligible_nightfarer),
             )
         )
-        goal_font = QFont(panel_font)
-        goal_font.setPixelSize(round(font_size * 0.9))
-        self.goal_label.setFont(goal_font)
         self.current_label = QLabel(tr(language, "hud.no_active_session"))
         self.current_label.setWordWrap(True)
-        current_font = QFont(panel_font)
-        current_font.setWeight(QFont.Weight.DemiBold)
-        self.current_label.setFont(current_font)
         self.streak_label = QLabel("0 / 100")
-        streak_font = QFont(panel_font)
-        streak_font.setPixelSize(round(font_size * 2))
-        self.streak_label.setFont(streak_font)
         self.streak_label.setStyleSheet("color: #9ed7ae;")
         status_panel = QHBoxLayout()
+        self._status_panel = status_panel
         status_panel.setDirection(QBoxLayout.Direction.TopToBottom)
-        status_panel.setSpacing(round(font_size * 0.2))
-        status_font = QFont(panel_font)
-        status_font.setPixelSize(round(font_size * 0.8))
         self.monitor_label = QLabel(tr(language, "monitor.starting"))
-        self.monitor_label.setFont(status_font)
         self.monitor_label.setStyleSheet("color: #aaaaaa;")
         self.sync_label = QLabel(
             tr(language, "hud.title_sync", status=tr(language, "sync.pending"))
         )
-        self.sync_label.setFont(status_font)
         self.sync_label.setStyleSheet("color: #aaaaaa;")
         status_panel.addWidget(self.monitor_label)
         status_panel.addWidget(self.sync_label)
         self.history = ToggleSelectionListWidget()
-        self.history.setFont(panel_font)
         self.history.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.history.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
@@ -338,21 +345,20 @@ class TrackerWindow(QMainWindow):
         layout.addLayout(status_panel)
 
         actions = QHBoxLayout()
+        self._action_buttons = []
         self.pause_button = QPushButton(tr(language, "actions.pause"))
         self.skip_button = QPushButton(tr(language, "actions.skip"))
         self.resolve_button = QPushButton(tr(language, "actions.resolve"))
         self.lock_button = QPushButton(tr(language, "actions.lock"))
         self.lock_button.setObjectName("lockButton")
         self.lock_button.setProperty("locked", False)
-        button_font = QFont(panel_font)
-        button_font.setPixelSize(round(font_size * 0.8))
         for button in (
             self.pause_button,
             self.skip_button,
             self.resolve_button,
             self.lock_button,
         ):
-            button.setFont(button_font)
+            self._action_buttons.append(button)
         self.lock_button.setToolTip(tr(language, "actions.lock_tooltip"))
         self.pause_button.clicked.connect(self.toggle_pause)
         self.skip_button.clicked.connect(self.skip_active)
@@ -368,12 +374,86 @@ class TrackerWindow(QMainWindow):
         resize_row.addWidget(QSizeGrip(panel))
         layout.addLayout(resize_row)
         self.setCentralWidget(panel)
+        self.set_font_size(font_size)
 
         self.updated.connect(self._refresh_from_signal)
         self._refresh_timer = QTimer(self)
         self._refresh_timer.timeout.connect(self.refresh)
         self._refresh_timer.start(1000)
         self.refresh()
+
+    def _open_settings(self) -> None:
+        if (
+            self._defaults_config is None
+            or self._config is None
+            or self._config_root is None
+            or self._assets_root is None
+        ):
+            return
+        dialog = SettingsDialog(
+            self._config_root,
+            self._defaults_config,
+            self._config,
+            self.nightfarers,
+            self,
+            language=self.language,
+            assets_root=self._assets_root,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            if dialog.saved_config is None:
+                raise RuntimeError("Settings dialog accepted without saved settings")
+            self._config = dialog.saved_config
+            self.apply_live_settings(self._config)
+            self.settings_saved.emit(self._config)
+
+    def apply_live_settings(self, config: dict[str, Any]) -> None:
+        self._config = config
+        self.recent_sessions = config["hud"]["recent_sessions"]
+        self._panel.setStyleSheet(
+            _panel_stylesheet(round(config["hud"]["opacity"] * 255))
+        )
+        self.set_font_size(config["hud"]["font_size"])
+        self.goal_label.setText(
+            tr(
+                self.language,
+                "hud.goal",
+                nightfarer=localized_name(
+                    self.language,
+                    "nightfarers",
+                    config["streak"]["eligible_nightfarer"],
+                ),
+            )
+        )
+        self.refresh()
+
+    def set_font_size(self, font_size: int) -> None:
+        self._font_size = font_size
+        panel_font = QFont(self._panel.font())
+        panel_font.setPixelSize(font_size)
+        self._panel.setFont(panel_font)
+        self.heading.setFont(panel_font)
+        self.close_button.setFont(panel_font)
+        self.settings_button.setFont(panel_font)
+        goal_font = QFont(panel_font)
+        goal_font.setPixelSize(round(font_size * 0.9))
+        self.goal_label.setFont(goal_font)
+        current_font = QFont(panel_font)
+        current_font.setWeight(QFont.Weight.DemiBold)
+        self.current_label.setFont(current_font)
+        streak_font = QFont(panel_font)
+        streak_font.setPixelSize(round(font_size * 2))
+        self.streak_label.setFont(streak_font)
+        status_font = QFont(panel_font)
+        status_font.setPixelSize(round(font_size * 0.8))
+        self.monitor_label.setFont(status_font)
+        self.sync_label.setFont(status_font)
+        button_font = QFont(panel_font)
+        button_font.setPixelSize(round(font_size * 0.8))
+        for button in self._action_buttons:
+            button.setFont(button_font)
+        self.history.setFont(panel_font)
+        self._panel_layout.setSpacing(round(font_size * 0.8))
+        self._status_panel.setSpacing(round(font_size * 0.2))
 
     def monitor_update(self, payload: dict[str, Any], status: str) -> None:
         self.updated.emit(payload, status)

@@ -567,7 +567,7 @@ For a target of 100, the title template shall therefore render the capped challe
 
 The application shall store structured session history in a local YAML file.
 
-The history file shall reside at the project root beside `config.yaml`, not in the game installation directory or the Windows user's application-data directory. Mutable runtime state, including HUD geometry and desired-title revision and synchronization status, shall be persisted in a Pydantic-validated project-root `state.json` file. Invalid state data shall be ignored and replaced by defaults on the next state save.
+The history file shall reside in the application folder beside the executable, not in the game installation directory or the Windows user's application-data directory. Mutable runtime state, including HUD geometry and desired-title revision and synchronization status, shall be persisted in a Pydantic-validated application-folder `state.json` file. Invalid state data shall be ignored and replaced by defaults on the next state save.
 
 The repository shall:
 
@@ -777,6 +777,13 @@ bilibili:
 All confidence thresholds are initial tuning values, not validated production settings.
 
 The configuration loader shall validate values and report invalid settings clearly. Unsupported configuration versions shall not be silently overwritten.
+
+The default `config.yaml` shall be bundled inside the executable. The release ZIP
+shall contain only that executable. The settings dialog shall edit supported
+configuration values but not paths or recognition calibration geometry. Saved
+user values shall be written to an application-folder `user-config.yaml` as a
+sparse override of the bundled defaults. Settings that cannot be applied safely
+while running shall be marked as requiring a restart.
 
 ## 12. Local HTTP API
 

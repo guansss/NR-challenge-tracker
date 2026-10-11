@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -70,6 +70,19 @@ class ScreenDebouncerTests(unittest.TestCase):
 
 
 class ScreenEntryEventTests(unittest.TestCase):
+    def test_target_window_can_be_updated_without_restarting_monitor(self) -> None:
+        sessions = Mock()
+        monitor = RecognitionMonitor(
+            FakeRecognitionEngine([]), sessions, "Old title", lambda *_: None
+        )
+
+        monitor.set_target_window("New title")
+
+        self.assertEqual(monitor.target_window, "New title")
+        self.assertTrue(monitor._target_window_changed.is_set())
+        with self.assertRaisesRegex(ValueError, "cannot be empty"):
+            monitor.set_target_window(" ")
+
     def test_repeated_status_update_preserves_format_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             sessions = SessionService(

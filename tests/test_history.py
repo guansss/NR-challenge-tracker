@@ -95,6 +95,43 @@ class HistoryRepositoryTests(unittest.TestCase):
                 {"recluse-win": True, "executor-win": False},
             )
 
+    def test_challenge_settings_can_be_updated_and_recalculate_past_sessions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "history.yaml"
+            start = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+            sessions = [
+                Session(
+                    id="recluse-win",
+                    started_at=start,
+                    ended_at=start,
+                    nightfarer="recluse",
+                    progress=Progress.DAY_3_VICTORY,
+                    status=SessionStatus.COMPLETED,
+                ),
+                Session(
+                    id="executor-win",
+                    started_at=start,
+                    ended_at=start,
+                    nightfarer="executor",
+                    progress=Progress.DAY_3_VICTORY,
+                    status=SessionStatus.COMPLETED,
+                ),
+            ]
+            repository = HistoryRepository(path, eligible_nightfarer="executor")
+            repository.save(sessions, target=100)
+
+            updated = repository.update_challenge_settings(
+                sessions, target=1, eligible_nightfarer="recluse"
+            )
+            records = yaml.safe_load(path.read_text(encoding="utf-8"))["sessions"]
+
+        self.assertEqual(updated.stats.current_streak, 1)
+        self.assertEqual(updated.stats.target, 1)
+        self.assertEqual(
+            {record["id"]: record["counts_for_streak"] for record in records},
+            {"recluse-win": True, "executor-win": False},
+        )
+
     def test_malformed_yaml_is_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.yaml"

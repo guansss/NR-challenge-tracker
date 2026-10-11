@@ -13,6 +13,9 @@ common:
   cancel:
     en: "Cancel"
     zh: "取消"
+  settings:
+    en: "Settings"
+    zh: "设置"
 
 actions:
   pause:
@@ -36,6 +39,122 @@ actions:
   lock_tooltip:
     en: "Pass mouse clicks through the HUD (Ctrl+Shift+L to unlock)"
     zh: "将鼠标点击穿透 HUD（按 Ctrl+Shift+L 解锁）"
+
+settings:
+  title:
+    en: "Settings"
+    zh: "设置"
+  restart_required:
+    en: "Restart required"
+    zh: "需要重启"
+  reset:
+    en: "Reset"
+    zh: "重置"
+  invalid:
+    en: "Settings were not saved: {error}"
+    zh: "设置未保存：{error}"
+  apply_error:
+    en: "Settings were saved, but the challenge could not be updated in the history file: {error}"
+    zh: "设置已保存，但无法更新历史文件中的挑战设置：{error}"
+  groups:
+    general:
+      en: "General"
+      zh: "常规"
+    challenge:
+      en: "Challenge"
+      zh: "挑战"
+    recognition:
+      en: "Recognition"
+      zh: "识别"
+    api:
+      en: "Local API"
+      zh: "本地 API"
+    bilibili:
+      en: "Bilibili title"
+      zh: "哔哩哔哩标题"
+    appearance:
+      en: "HUD and diagnostics"
+      zh: "HUD 与诊断"
+  fields:
+    language:
+      en: "Interface language"
+      zh: "界面语言"
+    target_window:
+      en: "Game window title"
+      zh: "游戏窗口标题"
+    target:
+      en: "Streak goal"
+      zh: "连胜目标"
+    eligible_nightfarer:
+      en: "Eligible Nightfarer"
+      zh: "计入挑战的渡夜者"
+    consecutive_confirmations:
+      en: "Screen confirmations"
+      zh: "画面确认次数"
+    idle_ms:
+      en: "Idle sampling interval (ms)"
+      zh: "待机采样间隔（毫秒）"
+    preparation_ms:
+      en: "Preparation sampling interval (ms)"
+      zh: "准备阶段采样间隔（毫秒）"
+    gameplay_ms:
+      en: "Gameplay sampling interval (ms)"
+      zh: "战斗阶段采样间隔（毫秒）"
+    result_ms:
+      en: "Result sampling interval (ms)"
+      zh: "结算阶段采样间隔（毫秒）"
+    template_score:
+      en: "Template score threshold"
+      zh: "模板分数阈值"
+    result_template_score:
+      en: "Result template score threshold"
+      zh: "结算模板分数阈值"
+    identity_margin:
+      en: "Identity margin"
+      zh: "身份匹配差值"
+    variant_score_margin:
+      en: "Variant score margin"
+      zh: "变体分数差值"
+    progress_margin:
+      en: "Progress margin"
+      zh: "进度匹配差值"
+    victory_margin:
+      en: "Victory margin"
+      zh: "胜利判定差值"
+    host:
+      en: "API host"
+      zh: "API 主机"
+    port:
+      en: "API port"
+      zh: "API 端口"
+    title_template:
+      en: "Title template"
+      zh: "标题模板"
+    polling_interval_seconds:
+      en: "Polling interval (seconds)"
+      zh: "轮询间隔（秒）"
+    opacity:
+      en: "HUD opacity"
+      zh: "HUD 不透明度"
+    font_size:
+      en: "Font size"
+      zh: "字体大小"
+    recent_sessions:
+      en: "Recent sessions shown"
+      zh: "显示最近场次数量"
+    save_screenshots:
+      en: "Save debug screenshots"
+      zh: "保存调试截图"
+  language:
+    auto:
+      en: "Automatic"
+      zh: "自动"
+    en:
+      en: "English"
+      zh: "英语"
+    zh:
+      en: "Chinese"
+      zh: "中文"
 
 session:
   dialog_title:

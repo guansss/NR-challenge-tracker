@@ -15,8 +15,7 @@ game's anti-cheat.
 2. Download the `Nightreign-Challenge-Tracker-...-windows.zip` file from the
    release's **Assets**.
 3. Extract the ZIP into a folder you can write to, such as a folder in
-   **Documents**. Keep the files together; the ZIP contains the app and its
-   settings file.
+   **Documents**.
 4. Double-click **Nightreign Challenge Tracker.exe** to start the tracker.
 5. Start Nightreign, or leave it running. Keep its game window visible and
    unminimized while you play.
@@ -68,29 +67,27 @@ additional userscript.
 Check the HUD's **Title sync** status. Confirm that the correct account and room
 are open, and check the title in Bilibili after syncing.
 
-Want a different room title? Before starting the tracker, edit
-`bilibili.title_template` in `config.yaml`. Use `{current_streak}` for your
-current streak and `{target}` for your goal. For example:
-`Nightreign Challenge ({current_streak}/{target})`.
+Want a different room title? Open **Settings** and change the title template.
+Use `{current_streak}` for your current streak and `{target}` for your goal.
+For example: `Nightreign Challenge ({current_streak}/{target})`.
 
 ## Your files and settings
 
 The tracker keeps its files in the folder where you extracted it:
 
 - `history.yaml` stores your run history.
-- `config.yaml` contains settings such as language and the challenge target.
+- `user-config.yaml` stores the settings you changed.
 - `state.json` stores the HUD's size and position.
 
 These files are local to that folder. To update the app, back up your folder
-first, then extract the new release into it. Keep your existing `history.yaml`
-and `state.json`; if you changed `config.yaml`, keep a copy of it too.
+first, then extract the new release into it. Keep your existing
+`history.yaml`, `state.json`, and `user-config.yaml`.
 
 By default, the interface language follows your Windows language (English or
-Chinese), and the streak goal is 100 wins with Executor. To change settings,
-close the tracker and edit `config.yaml` with a plain-text editor. Be careful
-not to change other settings unless you know what they do.
-Debug screenshots are disabled by default. Set `debug.save_screenshots` to
-`true` to save them in `debug/screenshots` beside the app executable.
+Chinese), and the streak goal is 100 wins with Executor. Select **Settings** on
+the HUD to edit supported options.
+Debug screenshots are disabled by default; enable them in **Settings** to save
+screenshots in `debug/screenshots` beside the app executable.
 
 ## Troubleshooting
 

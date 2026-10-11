@@ -116,16 +116,12 @@ def build_executable() -> None:
 
 def create_archive(dist_dir: Path, version: str) -> Path:
     executable = dist_dir / EXECUTABLE_NAME
-    config = dist_dir / "config.yaml"
     if not executable.is_file():
         raise FileNotFoundError(f"PyInstaller output not found: {executable}")
-    if not config.is_file():
-        raise FileNotFoundError(f"Portable config not found: {config}")
 
     archive_path = dist_dir / f"Nightreign-Challenge-Tracker-v{version}-windows.zip"
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.write(executable, executable.name)
-        archive.write(config, config.name)
     return archive_path
 
 
@@ -143,7 +139,6 @@ def main() -> int:
     version = read_version()
     validate_release_tag(version, os.environ.get("GITHUB_REF_NAME"))
     build_executable()
-    shutil.copy2(ROOT / "config.yaml", DIST_DIR / "config.yaml")
     archive_path = create_archive(DIST_DIR, version)
     userscript_path = stage_userscript(DIST_DIR, version)
     print(f"Created {archive_path}")

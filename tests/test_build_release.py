@@ -35,13 +35,13 @@ class BuildReleaseTests(unittest.TestCase):
             self.assertIn("name='Nightreign Challenge Tracker'", spec)
             self.assertIn("pyz,\n    a.scripts,\n    a.binaries,\n    a.datas,", spec)
             self.assertNotIn("COLLECT(", spec)
+            self.assertIn("(str(ROOT / 'config.yaml'), '.')", spec)
             self.assertIn("assets/templates", spec)
 
-    def test_archive_contains_executable_and_editable_config(self) -> None:
+    def test_archive_contains_only_the_executable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             dist_dir = Path(temporary_directory)
             (dist_dir / "Nightreign Challenge Tracker.exe").write_bytes(b"exe")
-            (dist_dir / "config.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
             version = read_version()
             archive_path = create_archive(dist_dir, version)
@@ -51,10 +51,7 @@ class BuildReleaseTests(unittest.TestCase):
                 f"Nightreign-Challenge-Tracker-v{version}-windows.zip",
             )
             with zipfile.ZipFile(archive_path) as archive:
-                self.assertEqual(
-                    archive.namelist(),
-                    ["Nightreign Challenge Tracker.exe", "config.yaml"],
-                )
+                self.assertEqual(archive.namelist(), ["Nightreign Challenge Tracker.exe"])
 
     def test_stages_versioned_bilibili_userscript(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

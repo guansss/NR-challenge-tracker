@@ -69,6 +69,8 @@ class RecognitionMonitor:
         self.engine = engine
         self.sessions = sessions
         self.target_window = target_window
+        self._target_window_lock = threading.Lock()
+        self._target_window_changed = threading.Event()
         self.on_update = on_update
         self.idle_interval_ms = idle_interval_ms
         self.preparation_interval_ms = preparation_interval_ms
@@ -131,6 +133,15 @@ class RecognitionMonitor:
         self._reset_screen_state()
         self._publish("monitor.active")
 
+    def set_target_window(self, target_window: str) -> None:
+        if not isinstance(target_window, str) or not target_window.strip():
+            raise ValueError("Target window title cannot be empty")
+        with self._target_window_lock:
+            if target_window == self.target_window:
+                return
+            self.target_window = target_window
+            self._target_window_changed.set()
+
     @property
     def is_paused(self) -> bool:
         return self._paused.is_set()
@@ -148,8 +159,23 @@ class RecognitionMonitor:
     def _run(self) -> None:
         try:
             while not self._stop.is_set():
+                if self._target_window_changed.is_set():
+                    with self._target_window_lock:
+                        self._target_window_changed.clear()
+                    if self._capture is not None:
+                        self._capture.stop()
+                        self._capture = None
+                    self._window_handle = None
+                    self._window_unavailable = False
+                    self._capture_ended.clear()
+                    self._capture_error_detail = ""
+                    self._interrupt_active_session()
+                    self._drain_frames()
+                    self._reset_screen_state()
                 if self._capture is None:
-                    target = find_window_by_title(self.target_window)
+                    with self._target_window_lock:
+                        target_window = self.target_window
+                    target = find_window_by_title(target_window)
                     if target is None:
                         self._interrupt_active_session()
                         if not self._window_unavailable:

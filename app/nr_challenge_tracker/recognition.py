@@ -49,6 +49,14 @@ class RecognitionEngine:
         self._scaled_templates: dict[tuple[str, int, int], Any] = {}
         self._load_templates()
 
+    def update_thresholds(self, thresholds: dict[str, Any]) -> None:
+        self.min_template_score = thresholds["template_score"]
+        self.min_result_template_score = thresholds["result_template_score"]
+        self.min_identity_margin = thresholds["identity_margin"]
+        self.min_variant_score_margin = thresholds["variant_score_margin"]
+        self.min_progress_margin = thresholds["progress_margin"]
+        self.min_victory_margin = thresholds["victory_margin"]
+
     @staticmethod
     def _load_manifest(path: Path) -> dict[str, Any]:
         manifest = yaml.safe_load(path.read_text(encoding="utf-8"))

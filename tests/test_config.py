@@ -1,11 +1,16 @@
 from pathlib import Path
+from copy import deepcopy
 import tempfile
 import unittest
 from unittest.mock import patch
 
 import yaml
 
-from app.nr_challenge_tracker.config import load_project_settings
+from app.nr_challenge_tracker.config import (
+    load_default_config,
+    load_project_settings,
+    save_user_config,
+)
 from app.nr_challenge_tracker.i18n import CATALOGS, resolve_language, tr
 
 
@@ -110,6 +115,70 @@ class LanguageConfigTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "streak.target"):
                 load_project_settings(Path(directory))
+
+    def test_user_config_recursively_overrides_bundled_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {"streak": {"target": 75}, "hud": {"opacity": 0.55}}
+                ),
+                encoding="utf-8",
+            )
+
+            config, settings = load_project_settings(root, assets_root=ROOT)
+
+        self.assertEqual(config["streak"]["target"], 75)
+        self.assertEqual(config["hud"]["opacity"], 0.55)
+        self.assertEqual(config["recognition"]["sampling"]["idle_ms"], 1000)
+        self.assertEqual(settings.target, 75)
+
+    def test_saved_user_config_contains_only_changed_editable_fields(self) -> None:
+        defaults = load_default_config(ROOT)
+        effective = deepcopy(defaults)
+        effective["streak"]["target"] = 75
+        effective["hud"]["opacity"] = 0.55
+        effective["paths"]["template_manifest"] = "ignored"
+
+        with tempfile.TemporaryDirectory() as directory:
+            save_user_config(Path(directory), defaults, effective)
+            saved = yaml.safe_load(
+                (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(saved, {"streak": {"target": 75}, "hud": {"opacity": 0.55}})
+
+    def test_legacy_config_is_migrated_to_sparse_user_config(self) -> None:
+        legacy = load_default_config(ROOT)
+        legacy["streak"]["target"] = 65
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config.yaml").write_text(
+                yaml.safe_dump(legacy), encoding="utf-8"
+            )
+
+            config, settings = load_project_settings(root, assets_root=ROOT)
+            migrated = yaml.safe_load(
+                (root / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(config["streak"]["target"], 65)
+        self.assertEqual(settings.target, 65)
+        self.assertEqual(migrated, {"streak": {"target": 65}})
+
+    def test_user_config_cannot_override_paths_or_recognition_geometry(self) -> None:
+        for override in (
+            {"paths": {"template_manifest": "elsewhere.yaml"}},
+            {"recognition": {"preparation_nightlord_roi": [0, 0, 1, 1]}},
+        ):
+            with self.subTest(override=override), tempfile.TemporaryDirectory() as directory:
+                Path(directory, "user-config.yaml").write_text(
+                    yaml.safe_dump(override), encoding="utf-8"
+                )
+
+                with self.assertRaisesRegex(ValueError, "field is not editable"):
+                    load_project_settings(Path(directory), assets_root=ROOT)
 
     def test_auto_uses_chinese_only_for_chinese_locales(self) -> None:
         self.assertEqual(resolve_language("auto", ["zh-CN"]), "zh")

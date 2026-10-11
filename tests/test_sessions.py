@@ -3,6 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import yaml
+
 from app.nr_challenge_tracker.history import HistoryRepository
 from app.nr_challenge_tracker.models import NightlordVariant, Progress, SessionStatus
 from app.nr_challenge_tracker.sessions import SessionService, SessionTransitionError
@@ -32,6 +34,25 @@ class SessionServiceTests(unittest.TestCase):
             hidden_nightlord=False,
             started_at=START,
         )
+
+    def test_challenge_settings_are_applied_to_the_live_snapshot(self) -> None:
+        session = self.start_eligible_session()
+        self.service.finalize_result(
+            session.id,
+            progress=Progress.DAY_3_VICTORY,
+            ended_at=START + timedelta(minutes=45),
+        )
+
+        snapshot = self.service.update_challenge_settings(
+            target=1, eligible_nightfarer="executor"
+        )
+
+        self.assertEqual(snapshot.stats.target, 1)
+        self.assertEqual(snapshot.stats.current_streak, 0)
+        self.assertEqual(self.service.snapshot.stats.target, 1)
+        saved = yaml.safe_load(self.history_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved["challenge"]["target"], 1)
+        self.assertFalse(saved["sessions"][0]["counts_for_streak"])
 
     def test_result_is_finalized_once_and_persisted(self) -> None:
         session = self.start_eligible_session()

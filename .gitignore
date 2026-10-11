@@ -1,5 +1,6 @@
 .vscode/
 
+/user-config.yaml
 /history.yaml
 /state.json
 debug/

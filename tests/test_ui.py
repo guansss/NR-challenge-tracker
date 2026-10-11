@@ -6,12 +6,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import yaml
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QMessageBox, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QWidget,
+)
 
+from app.nr_challenge_tracker.config import load_default_config
 from app.nr_challenge_tracker.history import HistorySnapshot
 from app.nr_challenge_tracker.models import (
     NightlordVariant,
@@ -21,11 +32,13 @@ from app.nr_challenge_tracker.models import (
 )
 from app.nr_challenge_tracker.state import StateRepository
 from app.nr_challenge_tracker.streak import calculate_streak
+from app.nr_challenge_tracker.settings_dialog import SettingsDialog
 from app.nr_challenge_tracker.ui import (
     ResolveSessionDialog,
     TrackerWindow,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
 ELIGIBLE_NIGHTFARER = "executor"
 
 
@@ -143,6 +156,85 @@ class ResolveSessionDialogTests(unittest.TestCase):
         dialog.close()
 
 
+class SettingsDialogTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def test_save_writes_only_the_edited_setting(self) -> None:
+        defaults = load_default_config(ROOT)
+        config = load_default_config(ROOT)
+
+        with tempfile.TemporaryDirectory() as directory:
+            dialog = SettingsDialog(
+                Path(directory),
+                defaults,
+                config,
+                ["executor", "recluse"],
+                language="en",
+                assets_root=ROOT,
+            )
+            self.assertNotIn("paths", dialog.editors)
+            self.assertNotIn(
+                "recognition.preparation_nightlord_roi", dialog.editors
+            )
+            reset = dialog.reset_buttons["streak.target"]
+            self.assertFalse(reset.isEnabled())
+            dialog.editors["streak.target"].setValue(75)
+            self.assertTrue(reset.isEnabled())
+            reset.click()
+            self.assertEqual(dialog.editors["streak.target"].value(), 100)
+            self.assertFalse(reset.isEnabled())
+            dialog.editors["streak.target"].setValue(75)
+            dialog._save()
+
+            saved = yaml.safe_load(
+                (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
+        self.assertEqual(saved, {"streak": {"target": 75}})
+
+    def test_wheel_does_not_change_combo_or_numeric_settings(self) -> None:
+        defaults = load_default_config(ROOT)
+        dialog = SettingsDialog(
+            Path(tempfile.gettempdir()),
+            defaults,
+            defaults,
+            ["executor", "recluse"],
+            language="en",
+            assets_root=ROOT,
+        )
+        for key in (
+            "language",
+            "streak.eligible_nightfarer",
+            "streak.target",
+            "hud.opacity",
+        ):
+            editor = dialog.editors[key]
+            if hasattr(editor, "value"):
+                before = editor.value()
+            else:
+                before = editor.currentIndex()
+            event = QWheelEvent(
+                QPointF(5, 5),
+                QPointF(5, 5),
+                QPoint(0, 0),
+                QPoint(0, 120),
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+                Qt.ScrollPhase.ScrollUpdate,
+                False,
+            )
+
+            editor.wheelEvent(event)
+
+            after = editor.value() if hasattr(editor, "value") else editor.currentIndex()
+            self.assertEqual(after, before, key)
+            self.assertFalse(event.isAccepted(), key)
+        dialog.close()
+
+
 class TrackerWindowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -183,6 +275,35 @@ class TrackerWindowTests(unittest.TestCase):
             [unittest.mock.call("preparation"), unittest.mock.call("result")],
         )
         window.deleteLater()
+
+    def test_live_font_setting_refreshes_existing_hud(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        config = load_default_config(ROOT)
+        config["hud"]["font_size"] = 22
+        config["streak"]["eligible_nightfarer"] = "recluse"
+        window = TrackerWindow(
+            sessions,
+            Mock(),
+            title_state,
+            [],
+            [],
+            eligible_nightfarer="executor",
+        )
+
+        window.apply_live_settings(config)
+
+        self.assertEqual(window._panel.font().pixelSize(), 22)
+        self.assertEqual(window.history.font().pixelSize(), 22)
+        self.assertEqual(window.streak_label.font().pixelSize(), 44)
+        self.assertEqual(window.goal_label.text(), "Goal: Recluse streak")
+        window.close()
 
     def test_window_geometry_is_restored_after_close(self) -> None:
         sessions = Mock(
