@@ -53,7 +53,6 @@ class _ApiConfig(_ConfigSection):
 class _BilibiliConfig(_ConfigSection):
     enabled: bool
     title_template: NonEmptyString
-    title_max_characters: int = Field(gt=0)
     polling_interval_seconds: int = Field(gt=0)
 
 
@@ -103,7 +102,6 @@ class AppSettings:
     api_port: int
     bilibili_enabled: bool
     title_template: str
-    title_max_characters: int
     polling_interval_seconds: int
     hud_opacity: float
     hud_font_size: int
@@ -146,7 +144,6 @@ def load_project_settings(
         api_port=config.api.port,
         bilibili_enabled=config.bilibili.enabled,
         title_template=config.bilibili.title_template,
-        title_max_characters=config.bilibili.title_max_characters,
         polling_interval_seconds=config.bilibili.polling_interval_seconds,
         hud_opacity=config.hud.opacity,
         hud_font_size=config.hud.font_size,

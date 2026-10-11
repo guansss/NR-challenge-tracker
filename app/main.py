@@ -66,7 +66,6 @@ def main() -> int:
         title_state = TitleState(
             state_repository,
             settings.title_template,
-            settings.title_max_characters,
             settings.polling_interval_seconds,
         )
         api = StreakApiServer(

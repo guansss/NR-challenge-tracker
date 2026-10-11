@@ -45,7 +45,6 @@ api:
 bilibili:
   enabled: true
   title_template: "Nightreign ({current_streak}/{target})"
-  title_max_characters: 30
   polling_interval_seconds: 5
 
 hud:

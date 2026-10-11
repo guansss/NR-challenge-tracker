@@ -71,8 +71,7 @@ are open, and check the title in Bilibili after syncing.
 Want a different room title? Before starting the tracker, edit
 `bilibili.title_template` in `config.yaml`. Use `{current_streak}` for your
 current streak and `{target}` for your goal. For example:
-`Nightreign Challenge ({current_streak}/{target})`. Keep the finished title within the
-`bilibili.title_max_characters` limit.
+`Nightreign Challenge ({current_streak}/{target})`.
 
 ## Your files and settings
 

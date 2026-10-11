@@ -14,12 +14,10 @@ class TitleState:
         self,
         repository: StateRepository,
         title_template: str,
-        max_characters: int,
         polling_interval_seconds: int = 5,
     ) -> None:
         self.repository = repository
         self.title_template = title_template
-        self.max_characters = max_characters
         self.polling_interval_seconds = polling_interval_seconds
         self._lock = RLock()
         persisted = repository.load_title_state()
@@ -36,10 +34,6 @@ class TitleState:
             )
         except (KeyError, ValueError) as error:
             raise ValueError(f"Invalid title template: {error}") from error
-        if len(title) > self.max_characters:
-            raise ValueError(
-                f"Desired title exceeds configured limit of {self.max_characters} characters"
-            )
         with self._lock:
             if title != self._desired_title:
                 self._desired_title = title

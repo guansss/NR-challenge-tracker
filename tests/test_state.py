@@ -73,7 +73,6 @@ class StateRepositoryTests(unittest.TestCase):
             state = TitleState(
                 StateRepository(Path(directory) / "state.json"),
                 "Challenge ({current_streak}/{target})",
-                40,
             )
             stats = StreakStats(4, 8, 20, 100, {})
 
@@ -87,12 +86,12 @@ class StateRepositoryTests(unittest.TestCase):
     def test_revision_and_sync_status_survive_restart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = StateRepository(Path(directory) / "state.json")
-            state = TitleState(repository, "{current_streak}/{target}", 40)
+            state = TitleState(repository, "{current_streak}/{target}")
             state.update(StreakStats(7, 7, 7, 100, {}))
             state.report_sync("sync.synced", 1)
 
             restarted = TitleState(
-                StateRepository(repository.path), "{current_streak}/{target}", 40
+                StateRepository(repository.path), "{current_streak}/{target}"
             )
             view = restarted.update(StreakStats(7, 7, 7, 100, {}))
 
@@ -104,20 +103,23 @@ class StateRepositoryTests(unittest.TestCase):
             state = TitleState(
                 StateRepository(Path(directory) / "state.json"),
                 "{current_streak}",
-                40,
             )
             state.update(StreakStats(2, 2, 2, 100, {}))
 
             self.assertFalse(state.report_sync("sync.synced", 0))
 
-    def test_title_length_is_validated(self) -> None:
+    def test_long_title_is_not_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = TitleState(
-                StateRepository(Path(directory) / "state.json"), "long title", 4
+                StateRepository(Path(directory) / "state.json"),
+                "A title longer than any configured limit",
             )
 
-            with self.assertRaisesRegex(ValueError, "exceeds configured limit"):
-                state.update(StreakStats(0, 0, 0, 100, {}))
+            view = state.update(StreakStats(0, 0, 0, 100, {}))
+
+            self.assertEqual(
+                view["desired_title"], "A title longer than any configured limit"
+            )
 
 
 if __name__ == "__main__":

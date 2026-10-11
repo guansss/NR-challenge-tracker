@@ -882,9 +882,9 @@ The title shall update on:
 
 Sessions with other Nightfarers shall not cause a title change unless reconciliation establishes that the effective streak has changed.
 
-### 13.4 Title length and completion
+### 13.4 Title submission and completion
 
-The title must be validated against Bilibili's actual current title-length restriction. The application shall report an invalid title rather than silently truncating it.
+The application shall submit the generated title without local title-length validation or truncation. If Bilibili rejects the title, the application shall report the synchronization failure.
 
 At 100 victories, the title shall remain:
 
@@ -1033,7 +1033,7 @@ Diagnostic logs should include timestamps, screen classifications, confidence va
 - Repeated polling does not submit an unchanged title.
 - Network failures are retried without blocking tracking.
 - Authentication failures are reported clearly.
-- The actual title-length limit is validated.
+- Generated titles are submitted without local title-length validation or truncation.
 - Synchronization resumes after the browser or network reconnects.
 
 ### 15.7 Performance tests
@@ -1083,7 +1083,7 @@ The architecture and behavioral requirements are sufficiently specified to begin
 2. ROI calibration: finalize normalized coordinates from actual captures at 16:9 resolutions.
 3. Capture compatibility: verify the chosen Windows capture API with Nightreign's actual display mode.
 4. Variant template scoring: validate direct normal/Everdark template-match margins across available variants and add real captures where the scores are ambiguous.
-5. Bilibili API: verify the live-room update endpoint, authentication requirements, CSRF behavior, response schema, and current title-length limit.
+5. Bilibili API: verify the live-room update endpoint, authentication requirements, CSRF behavior, and response schema.
 6. Manual resolution: implement the correction workflow for interrupted or uncertain sessions, including how the user explicitly resolves an Executor session whose outcome cannot be recovered.
 7. Performance baseline: establish measurable CPU, memory, and frame-rate overhead targets after profiling the initial prototype.
 
