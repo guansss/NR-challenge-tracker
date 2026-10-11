@@ -757,7 +757,6 @@ recognition:
     result_ms: 200
 
 hud:
-  enabled: true
   opacity: 0.85
   font_size: 16
   recent_sessions: 10
@@ -771,7 +770,6 @@ api:
   port: 5678
 
 bilibili:
-  enabled: true
   title_template: "Nightreign Winning Streak Challenge ({current_streak}/100)"
   polling_interval_seconds: 5
 ```

@@ -43,12 +43,10 @@ api:
   port: 5678
 
 bilibili:
-  enabled: true
   title_template: "Nightreign ({current_streak}/{target})"
   polling_interval_seconds: 5
 
 hud:
-  enabled: true
   opacity: 0.10
   font_size: 16
   recent_sessions: 10

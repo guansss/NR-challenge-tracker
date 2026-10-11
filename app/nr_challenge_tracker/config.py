@@ -51,13 +51,11 @@ class _ApiConfig(_ConfigSection):
 
 
 class _BilibiliConfig(_ConfigSection):
-    enabled: bool
     title_template: NonEmptyString
     polling_interval_seconds: int = Field(gt=0)
 
 
 class _HudConfig(_ConfigSection):
-    enabled: bool
     opacity: float = Field(ge=0.1, le=1.0)
     font_size: int = Field(gt=0)
     recent_sessions: int = Field(gt=0)
@@ -100,7 +98,6 @@ class AppSettings:
     consecutive_confirmations: int
     api_host: str
     api_port: int
-    bilibili_enabled: bool
     title_template: str
     polling_interval_seconds: int
     hud_opacity: float
@@ -142,7 +139,6 @@ def load_project_settings(
         consecutive_confirmations=config.recognition.consecutive_confirmations,
         api_host=config.api.host,
         api_port=config.api.port,
-        bilibili_enabled=config.bilibili.enabled,
         title_template=config.bilibili.title_template,
         polling_interval_seconds=config.bilibili.polling_interval_seconds,
         hud_opacity=config.hud.opacity,
