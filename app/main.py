@@ -71,11 +71,15 @@ def main() -> int:
             settings.title_template,
             settings.polling_interval_seconds,
         )
-        api = TrackerApiServer(
-            settings.api_host,
-            settings.api_port,
-            lambda: _api_view(sessions, title_state, window),
-            title_state.report_sync,
+        api = (
+            TrackerApiServer(
+                settings.api_host,
+                settings.api_port,
+                lambda: _api_view(sessions, title_state, window),
+                title_state.report_sync,
+            )
+            if settings.api_enabled
+            else None
         )
         monitor = RecognitionMonitor(
             engine,
@@ -113,13 +117,15 @@ def main() -> int:
             )
         )
         window.geometry_saved.connect(state_repository.save_hud_geometry)
-        api.start()
+        if api is not None:
+            api.start()
         window.show()
         monitor.start()
         try:
             return application.exec()
         finally:
-            api.close()
+            if api is not None:
+                api.close()
     except Exception as error:
         QMessageBox.critical(None, tr(language, "app.title"), str(error))
         return 1

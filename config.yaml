@@ -35,6 +35,7 @@ capture:
   target_window: "ELDEN RING NIGHTREIGN"
 
 api:
+  enabled: true
   host: "127.0.0.1"
   port: 5678
 

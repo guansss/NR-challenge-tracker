@@ -176,6 +176,47 @@ class SettingsDialogTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_api_server_can_be_disabled_and_bilibili_note_is_localized(self) -> None:
+        defaults = load_default_config(ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            dialog = SettingsDialog(
+                Path(directory),
+                defaults,
+                defaults,
+                ["executor", "recluse"],
+                language="en",
+                assets_root=ROOT,
+            )
+            enabled = dialog.editors["api.enabled"]
+            self.assertTrue(enabled.isChecked())
+            self.assertFalse(dialog.reset_buttons["api.enabled"].isEnabled())
+            labels = [label.text() for label in dialog.findChildren(QLabel)]
+            self.assertIn(
+                "Bilibili title sync requires the local API server to be enabled.",
+                labels,
+            )
+            self.assertIn("Restart required", labels)
+            enabled.setChecked(False)
+            dialog._save()
+
+            saved = yaml.safe_load(
+                (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(saved, {"api": {"enabled": False}})
+
+        dialog = SettingsDialog(
+            Path(tempfile.gettempdir()),
+            defaults,
+            defaults,
+            ["executor", "recluse"],
+            language="zh",
+            assets_root=ROOT,
+        )
+        labels = [label.text() for label in dialog.findChildren(QLabel)]
+        self.assertIn("哔哩哔哩标题同步需要启用本地 API 服务。", labels)
+        dialog.close()
+
     def test_save_writes_only_the_edited_setting(self) -> None:
         defaults = load_default_config(ROOT)
         config = load_default_config(ROOT)

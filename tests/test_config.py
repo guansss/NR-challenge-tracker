@@ -60,6 +60,23 @@ class LanguageConfigTests(unittest.TestCase):
 
         self.assertTrue(settings.debug_save_screenshots)
 
+    def test_api_server_defaults_to_enabled_and_can_be_disabled(self) -> None:
+        for enabled, expected in ((None, True), (False, False)):
+            with self.subTest(enabled=enabled):
+                config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+                if enabled is None:
+                    config["api"].pop("enabled")
+                else:
+                    config["api"]["enabled"] = enabled
+                _use_workspace_manifest(config)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "config.yaml"
+                    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+                    settings = load_project_settings(Path(directory))[1]
+
+                self.assertEqual(settings.api_enabled, expected)
+
     def test_hud_always_on_top_defaults_to_enabled(self) -> None:
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
         _use_workspace_manifest(config)

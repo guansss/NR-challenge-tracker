@@ -66,6 +66,7 @@ _FIELDS = (
         1,
         3600,
     ),
+    _Field(("api", "enabled"), "api", "bool", True),
     _Field(("api", "host"), "api", "text", True),
     _Field(("api", "port"), "api", "int", True, 1, 65535),
     _Field(
@@ -240,6 +241,10 @@ class SettingsDialog(QDialog):
                 form = QFormLayout(group_box)
                 content_layout.addWidget(group_box)
                 groups[field.group] = form
+                if field.group == "bilibili":
+                    note = QLabel(tr(language, "settings.notes.bilibili_api_required"))
+                    note.setWordWrap(True)
+                    form.addRow(note)
             editor = self._create_editor(field)
             field_key = ".".join(field.path)
             self.editors[field_key] = editor

@@ -163,6 +163,9 @@ settings:
     host:
       en: "API host"
       zh: "API 主机"
+    enabled:
+      en: "Enable local API server"
+      zh: "启用本地 API 服务"
     port:
       en: "API port"
       zh: "API 端口"
@@ -187,6 +190,10 @@ settings:
     save_screenshots:
       en: "Save debug screenshots"
       zh: "保存调试截图"
+  notes:
+    bilibili_api_required:
+      en: "Title sync requires the local API server to be enabled."
+      zh: "标题同步需要启用本地 API 服务才能使用。"
   active_challenge:
     en: "Active Challenge"
     zh: "当前挑战"

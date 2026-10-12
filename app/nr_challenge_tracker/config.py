@@ -74,6 +74,7 @@ EDITABLE_CONFIG_PATHS = (
     ("recognition", "sampling", "result_ms"),
     *(("recognition", "thresholds", key) for key in _RECOGNITION_THRESHOLD_FIELDS),
     ("capture", "target_window"),
+    ("api", "enabled"),
     ("api", "host"),
     ("api", "port"),
     ("bilibili", "title_template"),
@@ -94,6 +95,7 @@ class _CaptureConfig(_ConfigSection):
 
 
 class _ApiConfig(_ConfigSection):
+    enabled: bool = True
     host: NonEmptyString
     port: int = Field(ge=1, le=65535)
 
@@ -162,6 +164,7 @@ class AppSettings:
     gameplay_interval_ms: int
     result_interval_ms: int
     consecutive_confirmations: int
+    api_enabled: bool
     api_host: str
     api_port: int
     title_template: str
@@ -256,6 +259,7 @@ def validate_project_config(
         gameplay_interval_ms=config.recognition.sampling.gameplay_ms,
         result_interval_ms=config.recognition.sampling.result_ms,
         consecutive_confirmations=config.recognition.consecutive_confirmations,
+        api_enabled=config.api.enabled,
         api_host=config.api.host,
         api_port=config.api.port,
         title_template=config.bilibili.title_template,
