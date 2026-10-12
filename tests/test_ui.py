@@ -1051,14 +1051,14 @@ class TrackerWindowTests(unittest.TestCase):
             window.history.currentItem().data(Qt.ItemDataRole.UserRole),
             "needs-resolution",
         )
-        with patch(
-            "app.nr_challenge_tracker.ui.QMessageBox.question",
-            return_value=QMessageBox.StandardButton.Yes,
-        ):
-            window.skip_active()
-        sessions.discard_session.assert_called_once_with("needs-resolution")
         button_texts = [button.text() for button in window.findChildren(QPushButton)]
         self.assertNotIn("Open config", button_texts)
+        self.assertNotIn("Skip", button_texts)
+        self.assertIn(window.settings_button, window._action_buttons)
+        self.assertGreater(
+            window.settings_button.geometry().top(),
+            window.history.geometry().bottom(),
+        )
         self.assertIn("Lock", button_texts)
         self.assertIn(
             'QPushButton#lockButton[locked="true"]:hover',

@@ -304,7 +304,6 @@ class TrackerWindow(QMainWindow):
         )
         header.addWidget(self.heading)
         header.addStretch(1)
-        header.addWidget(self.settings_button)
         header.addWidget(self.close_button)
         layout.addLayout(header)
 
@@ -339,26 +338,24 @@ class TrackerWindow(QMainWindow):
         actions = QHBoxLayout()
         self._action_buttons = []
         self.pause_button = QPushButton(tr(language, "actions.pause"))
-        self.skip_button = QPushButton(tr(language, "actions.skip"))
         self.resolve_button = QPushButton(tr(language, "actions.resolve"))
         self.lock_button = QPushButton(tr(language, "actions.lock"))
         self.lock_button.setObjectName("lockButton")
         self.lock_button.setProperty("locked", False)
         for button in (
+            self.settings_button,
             self.pause_button,
-            self.skip_button,
             self.resolve_button,
             self.lock_button,
         ):
             self._action_buttons.append(button)
         self.lock_button.setToolTip(tr(language, "actions.lock_tooltip"))
         self.pause_button.clicked.connect(self.toggle_pause)
-        self.skip_button.clicked.connect(self.skip_active)
         self.resolve_button.clicked.connect(self.resolve_session)
         self.lock_button.clicked.connect(self.toggle_mouse_passthrough)
         actions.addWidget(self.pause_button)
-        actions.addWidget(self.skip_button)
         actions.addWidget(self.resolve_button)
+        actions.addWidget(self.settings_button)
         actions.addWidget(self.lock_button)
         layout.addLayout(actions)
         resize_row = QHBoxLayout()
@@ -434,7 +431,6 @@ class TrackerWindow(QMainWindow):
         self._panel.setFont(panel_font)
         self.heading.setFont(panel_font)
         self.close_button.setFont(panel_font)
-        self.settings_button.setFont(panel_font)
         goal_font = QFont(panel_font)
         goal_font.setPixelSize(round(font_size * 0.9))
         self.goal_label.setFont(goal_font)
@@ -759,44 +755,6 @@ class TrackerWindow(QMainWindow):
         else:
             self.monitor.pause()
             self.pause_button.setText(tr(self.language, "actions.resume"))
-
-    def skip_active(self) -> None:
-        selected_item = self.history.currentItem()
-        selected_id = (
-            selected_item.data(Qt.ItemDataRole.UserRole) if selected_item else None
-        )
-        target = next(
-            (
-                session
-                for session in reversed(self.sessions.snapshot.sessions)
-                if session.id == selected_id
-            ),
-            None,
-        )
-        if target is None:
-            target = next(
-                (
-                    session
-                    for session in reversed(self.sessions.snapshot.sessions)
-                    if session.status in ACTIVE_STATUSES
-                ),
-                None,
-            )
-        if target is None:
-            QMessageBox.information(
-                self,
-                tr(self.language, "dialogs.discard.title"),
-                tr(self.language, "dialogs.discard.select_session"),
-            )
-            return
-        answer = QMessageBox.question(
-            self,
-            tr(self.language, "dialogs.discard.title"),
-            tr(self.language, "dialogs.discard.confirm"),
-        )
-        if answer is QMessageBox.StandardButton.Yes:
-            self.sessions.discard_session(target.id)
-            self.refresh()
 
     def resolve_session(self) -> None:
         unresolved = [

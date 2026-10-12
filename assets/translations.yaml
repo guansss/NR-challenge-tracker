@@ -66,9 +66,6 @@ actions:
   resume:
     en: "Resume"
     zh: "继续"
-  skip:
-    en: "Skip"
-    zh: "跳过"
   resolve:
     en: "Resolve"
     zh: "修正"
@@ -380,16 +377,6 @@ hud:
     zh: "结果？"
 
 dialogs:
-  discard:
-    title:
-      en: "Discard session"
-      zh: "弃置场次"
-    select_session:
-      en: "Select a session to discard."
-      zh: "请选择要弃置的场次。"
-    confirm:
-      en: "Exclude this session from streak calculations?"
-      zh: "要将此场次排除在连胜统计之外吗？"
   resolve:
     no_sessions:
       en: "There are no sessions to correct."
