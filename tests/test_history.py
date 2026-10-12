@@ -25,15 +25,12 @@ class HistoryRepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.yaml"
 
-            snapshot = HistoryRepository(
-                path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-            ).load()
+            snapshot = HistoryRepository(path).load()
 
             self.assertEqual(snapshot.sessions, ())
-            self.assertEqual(snapshot.stats.current_streak, 0)
             self.assertTrue(path.is_file())
 
-    def test_round_trip_recomputes_derived_statistics(self) -> None:
+    def test_round_trip_persists_session_fields_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.yaml"
             start = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
@@ -47,9 +44,7 @@ class HistoryRepositoryTests(unittest.TestCase):
                 progress=Progress.DAY_3_VICTORY,
                 status=SessionStatus.COMPLETED,
             )
-            repository = HistoryRepository(
-                path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-            )
+            repository = HistoryRepository(path)
 
             saved = repository.save([session])
             saved_record = yaml.safe_load(path.read_text(encoding="utf-8"))["sessions"][0]
@@ -58,79 +53,14 @@ class HistoryRepositoryTests(unittest.TestCase):
             self.assertEqual(saved_record["nightfarer"], "executor")
             self.assertEqual(saved_record["nightlord"]["base_name"], "harmonia")
             self.assertEqual(saved_record["result_nightlord_name"], "straghess")
-            self.assertEqual(saved.stats.current_streak, 1)
-            self.assertEqual(loaded.stats.streak_numbers, {"win-1": 1})
             self.assertEqual(loaded.sessions[0], session)
-
-    def test_configured_nightfarer_is_used_for_saved_streak_counts(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "history.yaml"
-            start = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
-            sessions = [
-                Session(
-                    id="recluse-win",
-                    started_at=start,
-                    ended_at=start,
-                    nightfarer="recluse",
-                    progress=Progress.DAY_3_VICTORY,
-                    status=SessionStatus.COMPLETED,
-                ),
-                Session(
-                    id="executor-win",
-                    started_at=start,
-                    ended_at=start,
-                    nightfarer="executor",
-                    progress=Progress.DAY_3_VICTORY,
-                    status=SessionStatus.COMPLETED,
-                ),
-            ]
-            repository = HistoryRepository(path, eligible_nightfarer="recluse")
-
-            snapshot = repository.save(sessions)
-            records = yaml.safe_load(path.read_text(encoding="utf-8"))["sessions"]
-
-            self.assertEqual(snapshot.stats.current_streak, 1)
             self.assertEqual(
-                {record["id"]: record["counts_for_streak"] for record in records},
-                {"recluse-win": True, "executor-win": False},
+                set(saved_record),
+                {
+                    "id", "started_at", "ended_at", "nightfarer", "nightlord",
+                    "result_nightlord_name", "review_reason", "progress", "status",
+                },
             )
-
-    def test_challenge_settings_can_be_updated_and_recalculate_past_sessions(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "history.yaml"
-            start = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
-            sessions = [
-                Session(
-                    id="recluse-win",
-                    started_at=start,
-                    ended_at=start,
-                    nightfarer="recluse",
-                    progress=Progress.DAY_3_VICTORY,
-                    status=SessionStatus.COMPLETED,
-                ),
-                Session(
-                    id="executor-win",
-                    started_at=start,
-                    ended_at=start,
-                    nightfarer="executor",
-                    progress=Progress.DAY_3_VICTORY,
-                    status=SessionStatus.COMPLETED,
-                ),
-            ]
-            repository = HistoryRepository(path, eligible_nightfarer="executor")
-            repository.save(sessions, target=100)
-
-            updated = repository.update_challenge_settings(
-                sessions, target=1, eligible_nightfarer="recluse"
-            )
-            records = yaml.safe_load(path.read_text(encoding="utf-8"))["sessions"]
-
-        self.assertEqual(updated.stats.current_streak, 1)
-        self.assertEqual(updated.stats.target, 1)
-        self.assertEqual(
-            {record["id"]: record["counts_for_streak"] for record in records},
-            {"recluse-win": True, "executor-win": False},
-        )
 
     def test_malformed_yaml_is_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -139,9 +69,7 @@ class HistoryRepositoryTests(unittest.TestCase):
             path.write_bytes(original)
 
             with self.assertRaises(HistoryError):
-                HistoryRepository(
-                    path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-                ).load()
+                HistoryRepository(path).load()
 
             self.assertEqual(path.read_bytes(), original)
 
@@ -152,9 +80,7 @@ class HistoryRepositoryTests(unittest.TestCase):
             session = Session(id="same", started_at=start)
 
             with self.assertRaisesRegex(HistoryError, "unique"):
-                HistoryRepository(
-                    path, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-                ).save([session, session])
+                HistoryRepository(path).save([session, session])
 
             self.assertFalse(path.exists())
 

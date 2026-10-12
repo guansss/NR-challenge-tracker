@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.nr_challenge_tracker.config import load_default_config
+from app.nr_challenge_tracker.challenge_dialog import ChallengeManagerDialog
 from app.nr_challenge_tracker.history import HistorySnapshot
 from app.nr_challenge_tracker.models import (
     NightlordVariant,
@@ -40,6 +41,20 @@ from app.nr_challenge_tracker.ui import (
 
 ROOT = Path(__file__).resolve().parents[1]
 ELIGIBLE_NIGHTFARER = "executor"
+
+
+def _window_config(eligible_nightfarer: str = ELIGIBLE_NIGHTFARER) -> dict:
+    config = load_default_config(ROOT)
+    config["challenges"] = [{
+        "id": "streak",
+        "name": "Streak",
+        "type": "winning_streak",
+        "eligible_nightfarer": eligible_nightfarer,
+        "target": 100,
+        "excluded_session_ids": [],
+    }]
+    config["active_challenge_id"] = "streak"
+    return config
 
 
 def _calculate_test_streak(sessions):
@@ -178,14 +193,14 @@ class SettingsDialogTests(unittest.TestCase):
             self.assertNotIn(
                 "recognition.preparation_nightlord_roi", dialog.editors
             )
-            reset = dialog.reset_buttons["streak.target"]
+            reset = dialog.reset_buttons["hud.recent_sessions"]
             self.assertFalse(reset.isEnabled())
-            dialog.editors["streak.target"].setValue(75)
+            dialog.editors["hud.recent_sessions"].setValue(75)
             self.assertTrue(reset.isEnabled())
             reset.click()
-            self.assertEqual(dialog.editors["streak.target"].value(), 100)
+            self.assertEqual(dialog.editors["hud.recent_sessions"].value(), 10)
             self.assertFalse(reset.isEnabled())
-            dialog.editors["streak.target"].setValue(75)
+            dialog.editors["hud.recent_sessions"].setValue(75)
             dialog._save()
 
             saved = yaml.safe_load(
@@ -193,7 +208,7 @@ class SettingsDialogTests(unittest.TestCase):
             )
 
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
-        self.assertEqual(saved, {"streak": {"target": 75}})
+        self.assertEqual(saved, {"hud": {"recent_sessions": 75}})
 
     def test_wheel_does_not_change_combo_or_numeric_settings(self) -> None:
         defaults = load_default_config(ROOT)
@@ -207,8 +222,7 @@ class SettingsDialogTests(unittest.TestCase):
         )
         for key in (
             "language",
-            "streak.eligible_nightfarer",
-            "streak.target",
+            "hud.recent_sessions",
             "hud.opacity",
         ):
             editor = dialog.editors[key]
@@ -234,6 +248,180 @@ class SettingsDialogTests(unittest.TestCase):
             self.assertFalse(event.isAccepted(), key)
         dialog.close()
 
+    def test_active_challenge_is_selected_and_saved_in_settings(self) -> None:
+        defaults = load_default_config(ROOT)
+        config = load_default_config(ROOT)
+        config["challenges"] = [
+            {
+                "id": "first",
+                "name": "First",
+                "type": "normal",
+                "excluded_session_ids": [],
+            },
+            {
+                "id": "second",
+                "name": "Second",
+                "type": "normal",
+                "excluded_session_ids": [],
+            },
+        ]
+        config["active_challenge_id"] = "first"
+        with tempfile.TemporaryDirectory() as directory:
+            dialog = SettingsDialog(
+                Path(directory), defaults, config, ["executor"], language="en",
+                assets_root=ROOT,
+            )
+            self.assertEqual(dialog.challenge_selector.currentData(), "first")
+            self.assertIsNotNone(dialog.challenge_manager_button)
+            dialog.challenge_selector.setCurrentIndex(
+                dialog.challenge_selector.findData("second")
+            )
+
+            dialog._save()
+
+            persisted = yaml.safe_load(
+                (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(persisted["active_challenge_id"], "second")
+        self.assertEqual(dialog.saved_config["active_challenge_id"], "second")
+
+    def test_challenge_manager_trigger_is_inside_settings_dialog(self) -> None:
+        defaults = load_default_config(ROOT)
+        config = load_default_config(ROOT)
+        config["challenges"] = [{
+            "id": "normal",
+            "name": "All Sessions",
+            "type": "normal",
+            "excluded_session_ids": [],
+        }]
+        config["active_challenge_id"] = "normal"
+        dialog = SettingsDialog(
+            Path(tempfile.gettempdir()), defaults, config, ["executor"],
+            language="en", assets_root=ROOT,
+        )
+
+        with patch("app.nr_challenge_tracker.settings_dialog.ChallengeManagerDialog") as manager:
+            manager.return_value.exec.return_value = QDialog.DialogCode.Accepted
+            manager.return_value.saved_config = {
+                **config,
+                "challenges": [
+                    *config["challenges"],
+                    {
+                        "id": "second",
+                        "name": "Second",
+                        "type": "normal",
+                        "excluded_session_ids": [],
+                    },
+                ],
+            }
+            dialog.challenge_manager_button.click()
+
+        self.assertEqual(dialog.challenge_selector.count(), 2)
+        manager.assert_called_once()
+        dialog.close()
+
+
+class ChallengeManagerDialogTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.application = QApplication.instance() or QApplication([])
+
+    def test_adding_challenge_with_blank_name_does_not_parse_unsaved_form(self) -> None:
+        defaults = load_default_config(ROOT)
+        config = load_default_config(ROOT)
+        config["challenges"] = [{
+            "id": "normal",
+            "name": "All Sessions",
+            "type": "normal",
+            "excluded_session_ids": [],
+        }]
+        config["active_challenge_id"] = "normal"
+
+        with tempfile.TemporaryDirectory() as directory:
+            parent = QWidget()
+            dialog = ChallengeManagerDialog(
+                config, (), ["executor"], parent,
+                language="en",
+            )
+            dialog.name.clear()
+
+            dialog._add()
+
+            self.assertEqual(dialog.challenge_list.count(), 2)
+            self.assertEqual(
+                dialog.challenge_list.currentItem().text(), "New Challenge"
+            )
+            self.assertEqual(
+                dialog.config["challenges"][0]["name"], "All Sessions"
+            )
+            dialog.close()
+
+    def test_switching_challenges_saves_edits_to_the_previous_challenge(self) -> None:
+        defaults = load_default_config(ROOT)
+        config = load_default_config(ROOT)
+        config["challenges"] = [
+            {
+                "id": "normal",
+                "name": "All Sessions",
+                "type": "normal",
+                "excluded_session_ids": [],
+            },
+            {
+                "id": "streak",
+                "name": "Executor",
+                "type": "winning_streak",
+                "eligible_nightfarer": "executor",
+                "target": 25,
+                "excluded_session_ids": [],
+            },
+        ]
+        config["active_challenge_id"] = "normal"
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (), ["executor"],
+            parent, language="en",
+        )
+        dialog.name.setText("Edited Normal")
+
+        dialog.challenge_list.setCurrentRow(1)
+
+        self.assertEqual(dialog.config["challenges"][0]["name"], "Edited Normal")
+        self.assertEqual(dialog.name.text(), "Executor")
+        dialog.close()
+
+    def test_exclusion_list_displays_localized_session_details(self) -> None:
+        started_at = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+        session = Session(
+            id="session-details",
+            started_at=started_at,
+            ended_at=started_at,
+            nightfarer="executor",
+            nightlord_name="caligo",
+            nightlord_variant=NightlordVariant.NORMAL,
+            progress=Progress.DAY_3_VICTORY,
+            status=SessionStatus.COMPLETED,
+        )
+        config = load_default_config(ROOT)
+        config["challenges"] = [{
+            "id": "normal",
+            "name": "All Sessions",
+            "type": "normal",
+            "excluded_session_ids": [],
+        }]
+        config["active_challenge_id"] = "normal"
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (session,), ["executor"], parent, language="en",
+        )
+
+        expected_timestamp = started_at.astimezone().strftime("%Y/%m/%d %H:%M:%S")
+        self.assertEqual(
+            dialog.exclusions.item(0).text(),
+            f"{expected_timestamp} Executor - Caligo - Victory",
+        )
+        dialog.close()
+
 
 class TrackerWindowTests(unittest.TestCase):
     @classmethod
@@ -257,7 +445,7 @@ class TrackerWindowTests(unittest.TestCase):
                 title_state,
                 [],
                 [],
-                eligible_nightfarer="recluse",
+                config=_window_config("recluse"),
             )
             self.assertEqual(window.goal_label.text(), "Goal: Recluse streak")
             payload = {"status_values": {"title": "Nightreign"}}
@@ -285,16 +473,15 @@ class TrackerWindowTests(unittest.TestCase):
             "sync_status": "sync.disabled",
             "sync_message": "",
         }
-        config = load_default_config(ROOT)
+        config = _window_config()
         config["hud"]["font_size"] = 22
-        config["streak"]["eligible_nightfarer"] = "recluse"
         window = TrackerWindow(
             sessions,
             Mock(),
             title_state,
             [],
             [],
-            eligible_nightfarer="executor",
+            config=config,
         )
 
         window.apply_live_settings(config)
@@ -302,7 +489,7 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertEqual(window._panel.font().pixelSize(), 22)
         self.assertEqual(window.history.font().pixelSize(), 22)
         self.assertEqual(window.streak_label.font().pixelSize(), 44)
-        self.assertEqual(window.goal_label.text(), "Goal: Recluse streak")
+        self.assertEqual(window.goal_label.text(), "Goal: Executor streak")
         window.close()
 
     def test_window_geometry_is_restored_after_close(self) -> None:
@@ -324,7 +511,7 @@ class TrackerWindowTests(unittest.TestCase):
                 title_state,
                 [],
                 [],
-                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                config=_window_config(),
                 initial_geometry=state_repository.load_hud_geometry(),
             )
             window.geometry_saved.connect(state_repository.save_hud_geometry)
@@ -340,7 +527,7 @@ class TrackerWindowTests(unittest.TestCase):
                 title_state,
                 [],
                 [],
-                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                config=_window_config(),
                 initial_geometry=state_repository.load_hud_geometry(),
             )
 
@@ -381,7 +568,7 @@ class TrackerWindowTests(unittest.TestCase):
             [],
             [],
             language="zh",
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
 
         self.assertEqual(window.windowTitle(), "黑夜君临挑战追踪器")
@@ -441,7 +628,7 @@ class TrackerWindowTests(unittest.TestCase):
             title_state,
             ["executor"],
             ["libra"],
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
         window.monitor_update(
             {
@@ -501,7 +688,7 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor", "wylder"],
             ["adel", "caligo"],
             language="zh",
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
 
         self.assertEqual(window.current_label.text(), "当前：执行者 - 冰龙")
@@ -539,7 +726,7 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor"],
             ["caligo"],
             recent_sessions=2,
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
 
         self.assertEqual(window.history.count(), 2)
@@ -606,7 +793,7 @@ class TrackerWindowTests(unittest.TestCase):
             title_state,
             ["executor"],
             ["caligo"],
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
         window._refresh_timer.stop()
 
@@ -649,7 +836,7 @@ class TrackerWindowTests(unittest.TestCase):
             [],
             [],
             recent_sessions=12,
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
             initial_geometry=(0, 0, 420, 420),
         )
         window.show()
@@ -731,7 +918,7 @@ class TrackerWindowTests(unittest.TestCase):
             ["executor"],
             ["caligo"],
             font_size=18,
-            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            config=_window_config(),
         )
         window._refresh_timer.stop()
         self.assertEqual(window.current_label.text(), "Current: Executor - Caligo")

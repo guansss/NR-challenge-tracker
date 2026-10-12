@@ -59,19 +59,7 @@ class SessionService:
     @property
     def snapshot(self) -> HistorySnapshot:
         with self._lock:
-            return self._repository._snapshot(tuple(self._sessions), self._target)
-
-    def update_challenge_settings(
-        self, *, target: int, eligible_nightfarer: str
-    ) -> HistorySnapshot:
-        with self._lock:
-            snapshot = self._repository.update_challenge_settings(
-                self._sessions,
-                target=target,
-                eligible_nightfarer=eligible_nightfarer,
-            )
-            self._target = target
-            return snapshot
+            return self._repository._snapshot(tuple(self._sessions))
 
     def interrupt_active_sessions(self) -> None:
         with self._lock:

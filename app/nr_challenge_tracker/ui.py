@@ -33,12 +33,13 @@ from PySide6.QtWidgets import (
 )
 
 from .i18n import localized_name, tr
+from .challenges import ChallengeType, analyze_challenge
+from .config import challenges_from_config
 from .models import NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
 from .runtime_paths import resource_root
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
 from .settings_dialog import SettingsDialog
-from .streak import StreakStats
 from .title_state import TitleState
 
 _SCREEN_CUE_FILES = {
@@ -241,7 +242,6 @@ class TrackerWindow(QMainWindow):
         width: int = 420,
         recent_sessions: int = 10,
         language: str = "en",
-        eligible_nightfarer: str,
         initial_geometry: tuple[int, int, int, int] | None = None,
         defaults_config: dict[str, Any] | None = None,
         config: dict[str, Any] | None = None,
@@ -310,13 +310,7 @@ class TrackerWindow(QMainWindow):
         header.addWidget(self.close_button)
         layout.addLayout(header)
 
-        self.goal_label = QLabel(
-            tr(
-                language,
-                "hud.goal",
-                nightfarer=localized_name(language, "nightfarers", eligible_nightfarer),
-            )
-        )
+        self.goal_label = QLabel()
         self.current_label = QLabel(tr(language, "hud.no_active_session"))
         self.current_label.setWordWrap(True)
         self.streak_label = QLabel("0 / 100")
@@ -398,6 +392,7 @@ class TrackerWindow(QMainWindow):
             self,
             language=self.language,
             assets_root=self._assets_root,
+            sessions=self.sessions.snapshot.sessions,
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             if dialog.saved_config is None:
@@ -406,6 +401,14 @@ class TrackerWindow(QMainWindow):
             self.apply_live_settings(self._config)
             self.settings_saved.emit(self._config)
 
+    def _active_challenge(self):
+        if self._config is None or "challenges" not in self._config:
+            raise RuntimeError("TrackerWindow requires migrated Challenge configuration")
+        return next(
+            challenge for challenge in challenges_from_config(self._config)
+            if challenge.id == self._config["active_challenge_id"]
+        )
+
     def apply_live_settings(self, config: dict[str, Any]) -> None:
         self._config = config
         self.recent_sessions = config["hud"]["recent_sessions"]
@@ -413,17 +416,6 @@ class TrackerWindow(QMainWindow):
             _panel_stylesheet(round(config["hud"]["opacity"] * 255))
         )
         self.set_font_size(config["hud"]["font_size"])
-        self.goal_label.setText(
-            tr(
-                self.language,
-                "hud.goal",
-                nightfarer=localized_name(
-                    self.language,
-                    "nightfarers",
-                    config["streak"]["eligible_nightfarer"],
-                ),
-            )
-        )
         self.refresh()
 
     def set_font_size(self, font_size: int) -> None:
@@ -480,22 +472,21 @@ class TrackerWindow(QMainWindow):
 
     def refresh(self) -> None:
         snapshot = self.sessions.snapshot
-        stats: StreakStats = snapshot.stats
+        analysis = analyze_challenge(snapshot.sessions, self._active_challenge())
         try:
-            title_view = self.title_state.update(stats)
+            title_view = self.title_state.update(analysis)
         except ValueError as error:
-            title_view = self.title_state.view(stats)
+            title_view = self.title_state.view(analysis)
             title_view["sync_status"] = "sync.title_rejected"
             title_view["sync_message"] = str(error)
-        self.streak_label.setText(
-            tr(
-                self.language,
-                "hud.streak",
-                current=stats.current_streak,
-                target=stats.target,
-                best=stats.best_streak,
-            )
-        )
+        if analysis.challenge.type is ChallengeType.WINNING_STREAK:
+            if analysis.streak is None:
+                raise RuntimeError("Winning Streak Challenge has no streak analysis")
+            self.goal_label.setText(tr(self.language, "hud.goal", nightfarer=localized_name(self.language, "nightfarers", analysis.challenge.eligible_nightfarer or "")))
+            self.streak_label.setText(tr(self.language, "hud.streak", current=analysis.streak.current_streak, target=analysis.streak.target, best=analysis.streak.best_streak))
+        else:
+            self.goal_label.setText(tr(self.language, "hud.normal_goal"))
+            self.streak_label.setText(tr(self.language, "hud.normal_totals", sessions=analysis.total_sessions, wins=analysis.total_wins))
         self.sync_label.setText(
             tr(
                 self.language,
@@ -561,7 +552,7 @@ class TrackerWindow(QMainWindow):
         self._history_sessions = tuple(recent_sessions)
         self.history.clear()
         for session in recent_sessions:
-            row = self._format_session(session, stats, self.history)
+            row = self._format_session(session, analysis.streak_numbers, self.history)
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, session.id)
             self.history.addItem(item)
@@ -615,10 +606,10 @@ class TrackerWindow(QMainWindow):
     def _format_session(
         self,
         session: Session,
-        stats: StreakStats,
+        streak_numbers: dict[str, int],
         parent: QWidget,
     ) -> QWidget:
-        streak_number = stats.streak_numbers.get(session.id)
+        streak_number = streak_numbers.get(session.id)
         number = f"#{streak_number}" if streak_number is not None else None
         nightlord = (
             localized_name(self.language, "nightlords", session.nightlord_name)

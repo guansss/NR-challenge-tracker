@@ -21,10 +21,10 @@ os.environ["QT_LOGGING_RULES"] = ";".join(
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from app.nr_challenge_tracker.api import StreakApiServer
+from app.nr_challenge_tracker.api import TrackerApiServer
+from app.nr_challenge_tracker.challenges import analyze_challenge
 from app.nr_challenge_tracker.config import load_default_config, load_project_settings
 from app.nr_challenge_tracker.history import (
-    HistoryError,
     HistoryRepository,
     default_history_path,
 )
@@ -58,8 +58,6 @@ def main() -> int:
         sessions = SessionService(
             HistoryRepository(
                 history_path,
-                default_target=settings.target,
-                eligible_nightfarer=settings.eligible_nightfarer,
             ),
             everdark_nightlords={
                 entry["id"]
@@ -73,10 +71,10 @@ def main() -> int:
             settings.title_template,
             settings.polling_interval_seconds,
         )
-        api = StreakApiServer(
+        api = TrackerApiServer(
             settings.api_host,
             settings.api_port,
-            lambda: _api_view(sessions, title_state),
+            lambda: _api_view(sessions, title_state, window),
             title_state.report_sync,
         )
         monitor = RecognitionMonitor(
@@ -102,7 +100,6 @@ def main() -> int:
             font_size=settings.hud_font_size,
             recent_sessions=settings.hud_recent_sessions,
             language=language,
-            eligible_nightfarer=settings.eligible_nightfarer,
             initial_geometry=state_repository.load_hud_geometry(),
             defaults_config=defaults_config,
             config=project_config,
@@ -111,7 +108,7 @@ def main() -> int:
         )
         window.settings_saved.connect(
             lambda config: _apply_live_settings(
-                config, engine, monitor, title_state, sessions, window
+                config, engine, monitor, title_state, window
             )
         )
         window.geometry_saved.connect(state_repository.save_hud_geometry)
@@ -127,13 +124,12 @@ def main() -> int:
         return 1
 
 
-def _api_view(sessions: SessionService, title_state: TitleState) -> dict:
+def _api_view(sessions: SessionService, title_state: TitleState, window: TrackerWindow) -> dict:
     snapshot = sessions.snapshot
-    title = title_state.update(snapshot.stats)
+    analysis = analyze_challenge(snapshot.sessions, window._active_challenge())
+    title = title_state.update(analysis)
     return {
         **title,
-        "current_streak": snapshot.stats.current_streak,
-        "target": snapshot.stats.target,
     }
 
 
@@ -142,20 +138,8 @@ def _apply_live_settings(
     engine: RecognitionEngine,
     monitor: RecognitionMonitor,
     title_state: TitleState,
-    sessions: SessionService,
     window: TrackerWindow,
 ) -> None:
-    try:
-        sessions.update_challenge_settings(
-            target=config["streak"]["target"],
-            eligible_nightfarer=config["streak"]["eligible_nightfarer"],
-        )
-    except HistoryError as error:
-        QMessageBox.warning(
-            window,
-            tr(window.language, "settings.title"),
-            tr(window.language, "settings.apply_error", error=str(error)),
-        )
     monitor.set_target_window(config["capture"]["target_window"])
     engine.update_thresholds(config["recognition"]["thresholds"])
     monitor.debug_screenshots_enabled = config["debug"]["save_screenshots"]
@@ -163,7 +147,7 @@ def _apply_live_settings(
     title_state.polling_interval_seconds = config["bilibili"][
         "polling_interval_seconds"
     ]
-    title_state.update(sessions.snapshot.stats)
+    title_state.update(analyze_challenge(window.sessions.snapshot.sessions, window._active_challenge()))
     window.refresh()
 
 

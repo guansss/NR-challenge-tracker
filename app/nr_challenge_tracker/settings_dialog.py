@@ -27,12 +27,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .challenge_dialog import ChallengeManagerDialog
 from .config import (
     EDITABLE_CONFIG_PATHS,
+    challenges_from_config,
     save_user_config,
     validate_project_config,
 )
 from .i18n import localized_name, tr
+from .models import Session
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,12 +52,6 @@ class _Field:
 _FIELDS = (
     _Field(("language",), "general", "language", True),
     _Field(("capture", "target_window"), "general", "text"),
-    _Field(("streak", "target"), "challenge", "int", False, 1, 1000000),
-    _Field(
-        ("streak", "eligible_nightfarer"),
-        "challenge",
-        "nightfarer",
-    ),
     _Field(("hud", "opacity"), "appearance", "float", False, 0.1, 1, 2),
     _Field(("hud", "font_size"), "appearance", "int", False, 8, 72),
     _Field(("hud", "recent_sessions"), "appearance", "int", False, 1, 100),
@@ -198,6 +195,7 @@ class SettingsDialog(QDialog):
         *,
         language: str,
         assets_root: Path,
+        sessions: tuple[Session, ...] = (),
     ) -> None:
         super().__init__(parent)
         self.root = root
@@ -206,6 +204,7 @@ class SettingsDialog(QDialog):
         self.nightfarers = nightfarers
         self.language = language
         self.assets_root = assets_root
+        self.sessions = sessions
         self.editors: dict[str, QWidget] = {}
         self.reset_buttons: dict[str, QPushButton] = {}
         self.saved_config: dict[str, Any] | None = None
@@ -214,6 +213,24 @@ class SettingsDialog(QDialog):
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
+        self.challenge_selector: QComboBox | None = None
+        self.challenge_manager_button: QPushButton | None = None
+        if "challenges" in self.config:
+            challenge_box = QGroupBox(tr(language, "settings.groups.challenge"))
+            challenge_form = QFormLayout(challenge_box)
+            self.challenge_selector = _NoWheelComboBox()
+            self.challenge_manager_button = QPushButton(
+                tr(language, "settings.manage_challenges")
+            )
+            self.challenge_manager_button.clicked.connect(self._manage_challenges)
+            self._populate_challenge_selector()
+            challenge_form.addRow(
+                tr(language, "settings.active_challenge"),
+                self.challenge_selector,
+            )
+            challenge_form.addRow(self.challenge_manager_button)
+            content_layout.addWidget(challenge_box)
+
         groups: dict[str, QFormLayout] = {}
         for field in _FIELDS:
             form = groups.get(field.group)
@@ -270,6 +287,30 @@ class SettingsDialog(QDialog):
         layout.addWidget(scroll)
         layout.addWidget(buttons)
 
+    def _populate_challenge_selector(self) -> None:
+        if self.challenge_selector is None:
+            return
+        self.challenge_selector.clear()
+        for challenge in challenges_from_config(self.config):
+            self.challenge_selector.addItem(challenge.name, challenge.id)
+        self.challenge_selector.setCurrentIndex(
+            self.challenge_selector.findData(self.config["active_challenge_id"])
+        )
+
+    def _manage_challenges(self) -> None:
+        dialog = ChallengeManagerDialog(
+            self.config,
+            self.sessions,
+            self.nightfarers,
+            self,
+            language=self.language,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            if dialog.saved_config is None:
+                raise RuntimeError("Challenge manager accepted without saved changes")
+            self.config = dialog.saved_config
+            self._populate_challenge_selector()
+
     def _create_editor(self, field: _Field) -> QWidget:
         value = self._value(self.config, field.path)
         if field.kind == "language":
@@ -312,6 +353,8 @@ class SettingsDialog(QDialog):
 
     def _save(self) -> None:
         updated = deepcopy(self.config)
+        if self.challenge_selector is not None:
+            updated["active_challenge_id"] = self.challenge_selector.currentData()
         for field in _FIELDS:
             editor = self.editors[".".join(field.path)]
             self._set_value(updated, field.path, self._editor_value(editor))

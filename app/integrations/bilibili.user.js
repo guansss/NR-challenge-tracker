@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  const LOCAL_API = "http://127.0.0.1:5678/api/streak";
+  const LOCAL_API = "http://127.0.0.1:5678/api/state";
   const STATUS_API = "http://127.0.0.1:5678/api/sync-status";
   const POLL_INTERVAL_MS = 5000;
   const UI_SETTLE_MS = 300;
@@ -111,10 +111,12 @@
 
   async function sync(payload) {
     if (
-      payload.schema_version !== 1 ||
+      payload.schema_version !== 2 ||
       !Number.isInteger(payload.revision) ||
-      !Number.isInteger(payload.current_streak) ||
-      !Number.isInteger(payload.target) ||
+      !Number.isInteger(payload.wins) ||
+      !Number.isInteger(payload.total) ||
+      !Number.isInteger(payload.streak) ||
+      !Number.isInteger(payload.goal) ||
       !Number.isInteger(payload.polling_interval_seconds) ||
       payload.polling_interval_seconds < 1 ||
       typeof payload.desired_title !== "string"

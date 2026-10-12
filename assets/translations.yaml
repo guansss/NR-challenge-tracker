@@ -17,6 +17,48 @@ common:
     en: "Settings"
     zh: "设置"
 
+challenge:
+  manager_title:
+    en: "Manage Challenges"
+    zh: "管理挑战"
+  manage:
+    en: "Challenges"
+    zh: "挑战"
+  add:
+    en: "Add"
+    zh: "新增"
+  delete:
+    en: "Delete"
+    zh: "删除"
+  new:
+    en: "New Challenge"
+    zh: "新挑战"
+  name:
+    en: "Name"
+    zh: "名称"
+  type_label:
+    en: "Type"
+    zh: "类型"
+  eligible_nightfarer:
+    en: "Eligible Nightfarer"
+    zh: "计入挑战的渡夜者"
+  target:
+    en: "Streak goal"
+    zh: "连胜目标"
+  exclusions:
+    en: "Excluded sessions"
+    zh: "排除场次"
+  last_cannot_delete:
+    en: "At least one Challenge is required."
+    zh: "至少需要保留一个挑战。"
+  type:
+    normal:
+      en: "Normal"
+      zh: "普通"
+    winning_streak:
+      en: "Winning streak"
+      zh: "连胜"
+
 actions:
   pause:
     en: "Pause"
@@ -145,6 +187,12 @@ settings:
     save_screenshots:
       en: "Save debug screenshots"
       zh: "保存调试截图"
+  active_challenge:
+    en: "Active Challenge"
+    zh: "当前挑战"
+  manage_challenges:
+    en: "Manage Challenges..."
+    zh: "管理挑战…"
   language:
     auto:
       en: "Automatic"
@@ -306,6 +354,12 @@ hud:
   goal:
     en: "Goal: {nightfarer} streak"
     zh: "目标：{nightfarer}连胜"
+  normal_goal:
+    en: "All runs"
+    zh: "所有场次"
+  normal_totals:
+    en: "{sessions} runs  |  {wins} wins"
+    zh: "{sessions} 场  |  {wins} 胜"
   title_sync:
     en: "Title sync: {status}"
     zh: "直播标题同步：{status}"

@@ -5,8 +5,8 @@ from __future__ import annotations
 from threading import RLock
 from typing import Any
 
+from .challenges import ChallengeAnalysis, ChallengeType
 from .state import SYNC_STATES, PersistedTitleState, StateRepository
-from .streak import StreakStats
 
 
 class TitleState:
@@ -26,12 +26,10 @@ class TitleState:
         self._sync_status = persisted.sync_status
         self._sync_message = persisted.sync_message
 
-    def update(self, stats: StreakStats) -> dict[str, Any]:
+    def update(self, analysis: ChallengeAnalysis) -> dict[str, Any]:
+        values = _title_values(analysis)
         try:
-            title = self.title_template.format(
-                current_streak=stats.current_streak,
-                target=stats.target,
-            )
+            title = self.title_template.format(**values)
         except (KeyError, ValueError) as error:
             raise ValueError(f"Invalid title template: {error}") from error
         with self._lock:
@@ -41,14 +39,21 @@ class TitleState:
                 self._sync_status = "sync.pending"
                 self._sync_message = ""
                 self._save()
-            return self.view(stats)
+            return self.view(analysis)
 
-    def view(self, stats: StreakStats | None = None) -> dict[str, Any]:
+    def view(self, analysis: ChallengeAnalysis | None = None) -> dict[str, Any]:
+        values = _title_values(analysis) if analysis else _empty_title_values()
         with self._lock:
             return {
-                "schema_version": 1,
-                "current_streak": stats.current_streak if stats else None,
-                "target": stats.target if stats else None,
+                "schema_version": 2,
+                **values,
+                "challenge_type": (
+                    analysis.challenge.type.value if analysis is not None else None
+                ),
+                "total_sessions": (
+                    analysis.total_sessions if analysis is not None else None
+                ),
+                "total_wins": analysis.total_wins if analysis is not None else None,
                 "desired_title": self._desired_title,
                 "revision": self._revision,
                 "polling_interval_seconds": self.polling_interval_seconds,
@@ -78,3 +83,27 @@ class TitleState:
                 sync_message=self._sync_message,
             )
         )
+
+
+def _title_values(analysis: ChallengeAnalysis | None) -> dict[str, int]:
+    if analysis is None:
+        return _empty_title_values()
+    if analysis.challenge.type is ChallengeType.WINNING_STREAK:
+        if analysis.streak is None:
+            raise ValueError("Winning Streak Challenge has no streak analysis")
+        return {
+            "wins": 0,
+            "total": 0,
+            "streak": analysis.streak.current_streak,
+            "goal": analysis.streak.target,
+        }
+    return {
+        "wins": analysis.total_wins,
+        "total": analysis.total_sessions,
+        "streak": 0,
+        "goal": 0,
+    }
+
+
+def _empty_title_values() -> dict[str, int]:
+    return {"wins": 0, "total": 0, "streak": 0, "goal": 0}

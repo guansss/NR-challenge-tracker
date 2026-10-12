@@ -1,4 +1,4 @@
-"""Loopback-only streak API and restricted userscript status reporting."""
+"""Loopback-only tracker state API and restricted userscript status reporting."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, Callable
 from .title_state import SYNC_STATES
 
 
-class StreakApiServer:
+class TrackerApiServer:
     def __init__(
         self,
         host: str,
@@ -31,7 +31,7 @@ class StreakApiServer:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
-                if self.path != "/api/streak":
+                if self.path != "/api/state":
                     self._send(404, {"error": "not_found"})
                     return
                 try:
@@ -93,12 +93,13 @@ class StreakApiServer:
         if self._thread and self._thread.is_alive():
             return
         self._thread = threading.Thread(
-            target=self._server.serve_forever, name="streak-api", daemon=True
+            target=self._server.serve_forever, name="tracker-api", daemon=True
         )
         self._thread.start()
 
     def close(self) -> None:
-        self._server.shutdown()
+        if self._thread and self._thread.is_alive():
+            self._server.shutdown()
         self._server.server_close()
         if self._thread:
             self._thread.join(timeout=2)

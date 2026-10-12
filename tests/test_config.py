@@ -68,18 +68,6 @@ class LanguageConfigTests(unittest.TestCase):
             with self.subTest(language=language):
                 self.assertEqual(self._load_with_language(language).language, language)
 
-    def test_eligible_nightfarer_is_loaded_from_config(self) -> None:
-        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
-        config["streak"]["eligible_nightfarer"] = "recluse"
-        _use_workspace_manifest(config)
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "config.yaml"
-            path.write_text(yaml.safe_dump(config), encoding="utf-8")
-
-            settings = load_project_settings(Path(directory))[1]
-
-        self.assertEqual(settings.eligible_nightfarer, "recluse")
-
     def test_manifest_can_be_loaded_from_separate_asset_root(self) -> None:
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as directory:
@@ -88,56 +76,103 @@ class LanguageConfigTests(unittest.TestCase):
 
             settings = load_project_settings(Path(directory), assets_root=ROOT)[1]
 
-        self.assertEqual(settings.eligible_nightfarer, "executor")
-
-    def test_eligible_nightfarer_rejects_display_names(self) -> None:
-        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
-        config["streak"]["eligible_nightfarer"] = "Recluse"
-        _use_workspace_manifest(config)
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "config.yaml"
-            path.write_text(yaml.safe_dump(config), encoding="utf-8")
-
-            with self.assertRaisesRegex(ValueError, "eligible_nightfarer"):
-                load_project_settings(Path(directory))
+        self.assertEqual(settings.target_window, "ELDEN RING NIGHTREIGN")
 
     def test_unsupported_language_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "language must be one of"):
             self._load_with_language("fr")
 
-    def test_boolean_is_rejected_for_integer_settings(self) -> None:
+    def test_title_template_accepts_new_placeholders_and_rejects_old_ones(self) -> None:
+        for template in (
+            "{wins}/{total}/{streak}/{goal}",
+            "normal: {wins}/{total}",
+            "streak: {streak}/{goal}",
+        ):
+            with self.subTest(template=template), tempfile.TemporaryDirectory() as directory:
+                config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+                config["bilibili"]["title_template"] = template
+                _use_workspace_manifest(config)
+                Path(directory, "config.yaml").write_text(
+                    yaml.safe_dump(config), encoding="utf-8"
+                )
+
+                loaded = load_project_settings(Path(directory))[1]
+
+                self.assertEqual(loaded.title_template, template)
+
         config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
-        config["streak"]["target"] = True
+        config["bilibili"]["title_template"] = "{current_streak}/{target}"
         _use_workspace_manifest(config)
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "config.yaml"
-            path.write_text(yaml.safe_dump(config), encoding="utf-8")
-
-            with self.assertRaisesRegex(ValueError, "streak.target"):
+            Path(directory, "config.yaml").write_text(
+                yaml.safe_dump(config), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "title_template"):
                 load_project_settings(Path(directory))
 
-    def test_user_config_recursively_overrides_bundled_defaults(self) -> None:
+    def test_user_config_loads_challenges_and_other_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "user-config.yaml").write_text(
                 yaml.safe_dump(
-                    {"streak": {"target": 75}, "hud": {"opacity": 0.55}}
+                    {
+                        "challenges": [{
+                            "id": "wins",
+                            "name": "Executor wins",
+                            "type": "winning_streak",
+                            "eligible_nightfarer": "executor",
+                            "target": 75,
+                            "excluded_session_ids": [],
+                        }],
+                        "active_challenge_id": "wins",
+                        "hud": {"opacity": 0.55},
+                    }
                 ),
                 encoding="utf-8",
             )
 
             config, settings = load_project_settings(root, assets_root=ROOT)
 
-        self.assertEqual(config["streak"]["target"], 75)
+        self.assertEqual(config["challenges"][0]["target"], 75)
         self.assertEqual(config["hud"]["opacity"], 0.55)
         self.assertEqual(config["recognition"]["sampling"]["idle_ms"], 1000)
-        self.assertEqual(settings.target, 75)
 
-    def test_saved_user_config_contains_only_changed_editable_fields(self) -> None:
+    def test_user_config_rejects_unavailable_challenge_nightfarer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "challenges": [{
+                            "id": "wins",
+                            "name": "Executor wins",
+                            "type": "winning_streak",
+                            "eligible_nightfarer": "missing",
+                            "target": 75,
+                            "excluded_session_ids": [],
+                        }],
+                        "active_challenge_id": "wins",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "eligible_nightfarer"):
+                load_project_settings(root, assets_root=ROOT)
+
+    def test_saved_user_config_contains_settings_and_challenges(self) -> None:
         defaults = load_default_config(ROOT)
         effective = deepcopy(defaults)
-        effective["streak"]["target"] = 75
         effective["hud"]["opacity"] = 0.55
+        effective["challenges"] = [
+            {
+                "id": "all",
+                "name": "All",
+                "type": "normal",
+                "excluded_session_ids": [],
+            }
+        ]
+        effective["active_challenge_id"] = "all"
         effective["paths"]["template_manifest"] = "ignored"
 
         with tempfile.TemporaryDirectory() as directory:
@@ -146,11 +181,17 @@ class LanguageConfigTests(unittest.TestCase):
                 (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
             )
 
-        self.assertEqual(saved, {"streak": {"target": 75}, "hud": {"opacity": 0.55}})
+        self.assertEqual(
+            saved,
+            {
+                "hud": {"opacity": 0.55},
+                "challenges": effective["challenges"],
+                "active_challenge_id": "all",
+            },
+        )
 
     def test_legacy_config_is_migrated_to_sparse_user_config(self) -> None:
         legacy = load_default_config(ROOT)
-        legacy["streak"]["target"] = 65
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -163,9 +204,61 @@ class LanguageConfigTests(unittest.TestCase):
                 (root / "user-config.yaml").read_text(encoding="utf-8")
             )
 
-        self.assertEqual(config["streak"]["target"], 65)
-        self.assertEqual(settings.target, 65)
-        self.assertEqual(migrated, {"streak": {"target": 65}})
+        self.assertEqual(config["challenges"][0]["type"], "normal")
+        self.assertEqual(migrated["challenges"][0]["type"], "normal")
+
+    def test_legacy_streak_config_is_migrated_to_a_challenge(self) -> None:
+        legacy = load_default_config(ROOT)
+        legacy["streak"] = {
+            "target": 75,
+            "eligible_nightfarer": "Executor",
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            Path(root, "config.yaml").write_text(
+                yaml.safe_dump(legacy), encoding="utf-8"
+            )
+
+            config, _settings = load_project_settings(root, assets_root=ROOT)
+            migrated = yaml.safe_load(
+                (root / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(config["active_challenge_id"], "legacy-streak")
+        self.assertEqual(
+            config["challenges"][0],
+            {
+                "id": "legacy-streak",
+                "name": "Legacy streak",
+                "type": "winning_streak",
+                "excluded_session_ids": [],
+                "eligible_nightfarer": "executor",
+                "target": 75,
+            },
+        )
+        self.assertEqual(migrated["challenges"], config["challenges"])
+
+    def test_legacy_user_config_streak_is_migrated_and_persisted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            Path(root, "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {"streak": {"target": 50, "eligible_nightfarer": "recluse"}}
+                ),
+                encoding="utf-8",
+            )
+
+            config, _settings = load_project_settings(root, assets_root=ROOT)
+            migrated = yaml.safe_load(
+                (root / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(config["active_challenge_id"], "legacy-streak")
+        self.assertEqual(config["challenges"][0]["eligible_nightfarer"], "recluse")
+        self.assertEqual(config["challenges"][0]["target"], 50)
+        self.assertNotIn("streak", migrated)
+        self.assertEqual(migrated["challenges"], config["challenges"])
 
     def test_user_config_cannot_override_paths_or_recognition_geometry(self) -> None:
         for override in (

@@ -1,11 +1,45 @@
 import json
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 
+from app.nr_challenge_tracker.challenges import Challenge, ChallengeType, analyze_challenge
+from app.nr_challenge_tracker.models import Progress, Session, SessionStatus
 from app.nr_challenge_tracker.state import PersistedTitleState, StateRepository
-from app.nr_challenge_tracker.streak import StreakStats
 from app.nr_challenge_tracker.title_state import TitleState
+
+
+def _normal_analysis():
+    started = datetime(2026, 10, 3, tzinfo=UTC)
+    session = Session(
+        id="win",
+        started_at=started,
+        ended_at=started,
+        nightfarer="executor",
+        progress=Progress.DAY_3_VICTORY,
+        status=SessionStatus.COMPLETED,
+    )
+    return analyze_challenge((session,), Challenge("normal", "Normal", ChallengeType.NORMAL))
+
+
+def _streak_analysis():
+    started = datetime(2026, 10, 3, tzinfo=UTC)
+    session = Session(
+        id="win",
+        started_at=started,
+        ended_at=started,
+        nightfarer="executor",
+        progress=Progress.DAY_3_VICTORY,
+        status=SessionStatus.COMPLETED,
+    )
+    return analyze_challenge(
+        (session,),
+        Challenge(
+            "streak", "Streak", ChallengeType.WINNING_STREAK,
+            eligible_nightfarer="executor", target=100,
+        ),
+    )
 
 
 class StateRepositoryTests(unittest.TestCase):
@@ -17,7 +51,7 @@ class StateRepositoryTests(unittest.TestCase):
             repository.save_title_state(
                 PersistedTitleState(
                     revision=3,
-                    desired_title="Challenge (3/100)",
+                    desired_title="Challenge (W:0/0 S:3/100)",
                     sync_status="sync.synced",
                     sync_message="Saved",
                 )
@@ -28,7 +62,7 @@ class StateRepositoryTests(unittest.TestCase):
             self.assertEqual(restarted.load_hud_geometry(), (10, 20, 420, 360))
             title = restarted.load_title_state()
             self.assertEqual(title.revision, 3)
-            self.assertEqual(title.desired_title, "Challenge (3/100)")
+            self.assertEqual(title.desired_title, "Challenge (W:0/0 S:3/100)")
             self.assertEqual(title.sync_status, "sync.synced")
             self.assertEqual(title.sync_message, "Saved")
             document = json.loads(path.read_text(encoding="utf-8"))
@@ -72,28 +106,47 @@ class StateRepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = TitleState(
                 StateRepository(Path(directory) / "state.json"),
-                "Challenge ({current_streak}/{target})",
+                "Challenge ({wins}/{total}) ({streak}/{goal})",
             )
-            stats = StreakStats(4, 8, 20, 100, {})
+            analysis = _normal_analysis()
 
-            first = state.update(stats)
-            second = state.update(stats)
+            first = state.update(analysis)
+            second = state.update(analysis)
 
-            self.assertEqual(first["desired_title"], "Challenge (4/100)")
+            self.assertEqual(first["desired_title"], "Challenge (1/1) (0/0)")
+            self.assertEqual(
+                {key: first[key] for key in ("wins", "total", "streak", "goal")},
+                {"wins": 1, "total": 1, "streak": 0, "goal": 0},
+            )
             self.assertEqual(first["revision"], 1)
             self.assertEqual(second["revision"], 1)
+
+    def test_winning_streak_challenge_populates_only_streak_and_goal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = TitleState(
+                StateRepository(Path(directory) / "state.json"),
+                "Wins {wins}/{total}, streak {streak}/{goal}",
+            )
+
+            view = state.update(_streak_analysis())
+
+        self.assertEqual(view["desired_title"], "Wins 0/0, streak 1/100")
+        self.assertEqual(
+            {key: view[key] for key in ("wins", "total", "streak", "goal")},
+            {"wins": 0, "total": 0, "streak": 1, "goal": 100},
+        )
 
     def test_revision_and_sync_status_survive_restart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = StateRepository(Path(directory) / "state.json")
-            state = TitleState(repository, "{current_streak}/{target}")
-            state.update(StreakStats(7, 7, 7, 100, {}))
+            state = TitleState(repository, "{wins}/{total}:{streak}/{goal}")
+            state.update(_streak_analysis())
             state.report_sync("sync.synced", 1)
 
             restarted = TitleState(
-                StateRepository(repository.path), "{current_streak}/{target}"
+                StateRepository(repository.path), "{wins}/{total}:{streak}/{goal}"
             )
-            view = restarted.update(StreakStats(7, 7, 7, 100, {}))
+            view = restarted.update(_streak_analysis())
 
             self.assertEqual(view["revision"], 1)
             self.assertEqual(view["sync_status"], "sync.synced")
@@ -102,9 +155,9 @@ class StateRepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state = TitleState(
                 StateRepository(Path(directory) / "state.json"),
-                "{current_streak}",
+                "{streak}",
             )
-            state.update(StreakStats(2, 2, 2, 100, {}))
+            state.update(_streak_analysis())
 
             self.assertFalse(state.report_sync("sync.synced", 0))
 
@@ -115,7 +168,7 @@ class StateRepositoryTests(unittest.TestCase):
                 "A title longer than any configured limit",
             )
 
-            view = state.update(StreakStats(0, 0, 0, 100, {}))
+            view = state.update(_normal_analysis())
 
             self.assertEqual(
                 view["desired_title"], "A title longer than any configured limit"

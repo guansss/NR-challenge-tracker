@@ -21,8 +21,8 @@ game's anti-cheat.
    unminimized while you play.
 
 The HUD stays above other windows. Drag it to move it and use the corner grip to
-resize it. It shows your current streak, recent runs, and whether the game is
-being monitored.
+resize it. It shows the active Challenge, its analysis, recent runs, and
+whether the game is being monitored.
 
 ## While you play
 
@@ -41,8 +41,13 @@ HUD controls:
 - If a run is missed or recorded incorrectly, select it in the recent-runs list
   and choose **Resolve**. Check the character, boss, variant, outcome, and times,
   then save the correction.
-- **Skip** discards the selected run (or the current run if none is selected),
-  excluding it from streak calculations.
+- **Skip** discards the selected run (or the current run if none is selected).
+- Open **Settings**, then use the **Active Challenge** selector to switch
+  Challenges or choose **Manage Challenges...** to create, edit, and delete
+  them. A **Normal** Challenge counts all included sessions and wins. A
+  **Winning Streak** Challenge has its own eligible Nightfarer and goal. Each
+  Challenge can exclude sessions from its analysis without hiding them from
+  run history.
 - **Lock** lets mouse clicks pass through the HUD so you can click the game
   underneath it. Press **Ctrl+Shift+L** to unlock it.
 - Close the HUD with **×** when you are finished. Your run history is saved
@@ -68,15 +73,18 @@ Check the HUD's **Title sync** status. Confirm that the correct account and room
 are open, and check the title in Bilibili after syncing.
 
 Want a different room title? Open **Settings** and change the title template.
-Use `{current_streak}` for your current streak and `{target}` for your goal.
-For example: `Nightreign Challenge ({current_streak}/{target})`.
+The template supports `{wins}`, `{total}`, `{streak}`, and `{goal}`. A Normal
+Challenge fills `wins` with its included victories and `total` with included
+sessions; a Winning Streak Challenge fills `streak` and `goal`. Values that do
+not apply to the active Challenge are `0`. For example:
+`Nightreign (W:{wins}/{total} S:{streak}/{goal})`.
 
 ## Your files and settings
 
 The tracker keeps its files in the folder where you extracted it:
 
 - `history.yaml` stores your run history.
-- `user-config.yaml` stores the settings you changed.
+- `user-config.yaml` stores the settings you changed, including your Challenges.
 - `state.json` stores the HUD's size and position.
 
 These files are local to that folder. To update the app, back up your folder
@@ -84,8 +92,9 @@ first, then extract the new release into it. Keep your existing
 `history.yaml`, `state.json`, and `user-config.yaml`.
 
 By default, the interface language follows your Windows language (English or
-Chinese), and the streak goal is 100 wins with Executor. Select **Settings** on
-the HUD to edit supported options.
+Chinese), and the tracker starts with an **All Sessions** Normal Challenge.
+Open **Settings** on the HUD to switch the active Challenge, manage Challenge
+analyses, and edit the remaining application options.
 Debug screenshots are disabled by default; enable them in **Settings** to save
 screenshots in `debug/screenshots` beside the app executable.
 

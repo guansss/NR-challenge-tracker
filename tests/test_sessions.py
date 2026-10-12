@@ -35,7 +35,7 @@ class SessionServiceTests(unittest.TestCase):
             started_at=START,
         )
 
-    def test_challenge_settings_are_applied_to_the_live_snapshot(self) -> None:
+    def test_session_history_remains_unchanged_by_runtime_analysis(self) -> None:
         session = self.start_eligible_session()
         self.service.finalize_result(
             session.id,
@@ -43,16 +43,9 @@ class SessionServiceTests(unittest.TestCase):
             ended_at=START + timedelta(minutes=45),
         )
 
-        snapshot = self.service.update_challenge_settings(
-            target=1, eligible_nightfarer="executor"
-        )
-
-        self.assertEqual(snapshot.stats.target, 1)
-        self.assertEqual(snapshot.stats.current_streak, 0)
-        self.assertEqual(self.service.snapshot.stats.target, 1)
         saved = yaml.safe_load(self.history_path.read_text(encoding="utf-8"))
-        self.assertEqual(saved["challenge"]["target"], 1)
-        self.assertFalse(saved["sessions"][0]["counts_for_streak"])
+        self.assertEqual(set(saved), {"schema_version", "sessions"})
+        self.assertNotIn("counts_for_streak", saved["sessions"][0])
 
     def test_result_is_finalized_once_and_persisted(self) -> None:
         session = self.start_eligible_session()

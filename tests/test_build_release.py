@@ -65,6 +65,11 @@ class BuildReleaseTests(unittest.TestCase):
                 userscript_path.read_bytes(),
                 (ROOT / "app" / "integrations" / "bilibili.user.js").read_bytes(),
             )
+            userscript = userscript_path.read_text(encoding="utf-8")
+            self.assertIn("/api/state", userscript)
+            self.assertNotIn("/api/streak", userscript)
+            for placeholder in ("payload.wins", "payload.total", "payload.streak", "payload.goal"):
+                self.assertIn(placeholder, userscript)
 
 
 if __name__ == "__main__":

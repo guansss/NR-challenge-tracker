@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
 import ipaddress
 import os
-from pathlib import Path
 import tempfile
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated, Any, Literal
+
+import yaml
 
 from pydantic import (
     BaseModel,
@@ -18,7 +20,8 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
-import yaml
+
+from .challenges import Challenge, ChallengeType
 
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -71,8 +74,6 @@ EDITABLE_CONFIG_PATHS = (
     ("recognition", "sampling", "result_ms"),
     *(("recognition", "thresholds", key) for key in _RECOGNITION_THRESHOLD_FIELDS),
     ("capture", "target_window"),
-    ("streak", "target"),
-    ("streak", "eligible_nightfarer"),
     ("api", "host"),
     ("api", "port"),
     ("bilibili", "title_template"),
@@ -89,11 +90,6 @@ _EDITABLE_CONFIG_PATH_SET = frozenset(EDITABLE_CONFIG_PATHS)
 
 class _CaptureConfig(_ConfigSection):
     target_window: NonEmptyString
-
-
-class _StreakConfig(_ConfigSection):
-    target: int = Field(gt=0)
-    eligible_nightfarer: str
 
 
 class _ApiConfig(_ConfigSection):
@@ -120,7 +116,7 @@ class _BilibiliConfig(_ConfigSection):
     @classmethod
     def validate_title_template(cls, value: str) -> str:
         try:
-            value.format(current_streak=0, target=0)
+            value.format(wins=0, total=0, streak=0, goal=0)
         except (IndexError, KeyError, ValueError) as error:
             raise ValueError(f"invalid title template: {error}") from error
         return value
@@ -142,7 +138,6 @@ class _ProjectConfig(_ConfigSection):
     paths: dict[str, str]
     recognition: _RecognitionConfig
     capture: _CaptureConfig
-    streak: _StreakConfig
     api: _ApiConfig
     bilibili: _BilibiliConfig
     hud: _HudConfig
@@ -160,8 +155,6 @@ class _ProjectConfig(_ConfigSection):
 class AppSettings:
     language: str
     target_window: str
-    target: int
-    eligible_nightfarer: str
     idle_interval_ms: int
     preparation_interval_ms: int
     gameplay_interval_ms: int
@@ -184,6 +177,7 @@ def load_project_settings(
     defaults = load_default_config(config_root)
     user_config_path = root / "user-config.yaml"
     overrides: dict[str, Any] = {}
+    should_persist_challenges = True
     if user_config_path.exists():
         try:
             overrides = yaml.safe_load(user_config_path.read_text(encoding="utf-8"))
@@ -192,6 +186,14 @@ def load_project_settings(
         if not isinstance(overrides, dict):
             raise ValueError("Invalid user configuration: root must be a mapping")
         _validate_user_override_paths(overrides)
+        if "challenges" not in overrides and "streak" in overrides:
+            legacy_streak = overrides.pop("streak")
+            overrides["challenges"], overrides["active_challenge_id"] = (
+                _legacy_streak_challenge(defaults, legacy_streak, assets_root or root)
+            )
+            should_persist_challenges = True
+        else:
+            should_persist_challenges = "challenges" not in overrides
     else:
         legacy_config_path = root / "config.yaml"
         if (
@@ -201,9 +203,16 @@ def load_project_settings(
             overrides = _migrate_legacy_config(
                 root, legacy_config_path, defaults, assets_root or root
             )
+        should_persist_challenges = "challenges" not in overrides
 
     data = merge_config(defaults, overrides)
-    return validate_project_config(data, assets_root=assets_root or root)
+    data["challenges"], data["active_challenge_id"] = _load_challenges(
+        overrides.get("challenges"), overrides.get("active_challenge_id")
+    )
+    validated, settings = validate_project_config(data, assets_root=assets_root or root)
+    if should_persist_challenges:
+        save_user_config(root, defaults, validated)
+    return validated, settings
 
 
 def load_default_config(config_root: Path) -> dict[str, Any]:
@@ -225,17 +234,20 @@ def validate_project_config(
     except ValidationError as error:
         raise ValueError(f"Invalid application configuration: {error}") from error
     available_nightfarers = _load_available_nightfarers(assets_root, config.paths)
-    if config.streak.eligible_nightfarer not in available_nightfarers:
-        raise ValueError(
-            "Invalid application configuration: eligible_nightfarer "
-            f"{config.streak.eligible_nightfarer!r} is not an available Nightfarer key"
-        )
-
+    if data.get("challenges"):
+        for challenge in challenges_from_config(data):
+            if (
+                challenge.type is ChallengeType.WINNING_STREAK
+                and challenge.eligible_nightfarer not in available_nightfarers
+            ):
+                raise ValueError(
+                    "Invalid application configuration: eligible_nightfarer "
+                    f"{challenge.eligible_nightfarer!r} in Challenge {challenge.name!r} "
+                    "is not an available Nightfarer key"
+                )
     settings = AppSettings(
         language=config.language,
         target_window=config.capture.target_window,
-        target=config.streak.target,
-        eligible_nightfarer=config.streak.eligible_nightfarer,
         idle_interval_ms=config.recognition.sampling.idle_ms,
         preparation_interval_ms=config.recognition.sampling.preparation_ms,
         gameplay_interval_ms=config.recognition.sampling.gameplay_ms,
@@ -250,7 +262,7 @@ def validate_project_config(
         hud_recent_sessions=config.hud.recent_sessions,
         debug_save_screenshots=config.debug.save_screenshots,
     )
-    return copy.deepcopy(data), settings
+    return copy.deepcopy(config.model_dump()), settings
 
 
 def merge_config(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -268,10 +280,18 @@ def build_user_overrides(
 ) -> dict[str, Any]:
     overrides: dict[str, Any] = {}
     for path in EDITABLE_CONFIG_PATHS:
-        default_value = _get_config_value(defaults, path)
         current_value = _get_config_value(effective_config, path)
+        try:
+            default_value = _get_config_value(defaults, path)
+        except ValueError:
+            # Optional fields introduced after an older bundled config should
+            # use their validated default rather than creating an override.
+            default_value = current_value
         if current_value != default_value:
             _set_config_value(overrides, path, current_value)
+    for key in ("challenges", "active_challenge_id"):
+        if key in effective_config:
+            overrides[key] = copy.deepcopy(effective_config[key])
     return overrides
 
 
@@ -335,6 +355,12 @@ def _migrate_legacy_config(
         except ValueError:
             continue
         _set_config_value(migrated, path, value)
+    if "streak" in legacy_config:
+        migrated["challenges"], migrated["active_challenge_id"] = (
+            _legacy_streak_challenge(
+                defaults, legacy_config["streak"], assets_root
+            )
+        )
     validated, _settings = validate_project_config(migrated, assets_root=assets_root)
     return save_user_config(root, defaults, validated)
 
@@ -342,6 +368,11 @@ def _migrate_legacy_config(
 def _validate_user_override_paths(overrides: dict[str, Any]) -> None:
     def visit(value: Any, prefix: tuple[str, ...]) -> None:
         for key, child in value.items():
+            if not prefix and key in {"challenges", "active_challenge_id"}:
+                continue
+            if not prefix and key == "streak":
+                # The loader migrates this retired section into a Challenge.
+                continue
             if not isinstance(key, str):
                 raise ValueError("Invalid user configuration: keys must be strings")
             path = (*prefix, key)
@@ -363,6 +394,94 @@ def _validate_user_override_paths(overrides: dict[str, Any]) -> None:
                 )
 
     visit(overrides, ())
+
+
+def _load_challenges(
+    raw_challenges: Any, active_challenge_id: Any
+) -> tuple[list[dict[str, Any]], str]:
+    if raw_challenges is None:
+        challenge = Challenge("normal", "All Sessions", ChallengeType.NORMAL)
+        return [_challenge_to_config(challenge)], challenge.id
+    if not isinstance(raw_challenges, list) or not raw_challenges:
+        raise ValueError("Invalid user configuration: challenges must be a non-empty list")
+    challenges = tuple(_challenge_from_config(item) for item in raw_challenges)
+    if len({challenge.id for challenge in challenges}) != len(challenges):
+        raise ValueError("Invalid user configuration: Challenge ids must be unique")
+    if not isinstance(active_challenge_id, str) or active_challenge_id not in {
+        challenge.id for challenge in challenges
+    }:
+        raise ValueError("Invalid user configuration: active_challenge_id must select a Challenge")
+    return [_challenge_to_config(challenge) for challenge in challenges], active_challenge_id
+
+
+def _legacy_streak_challenge(
+    defaults: dict[str, Any], raw_streak: Any, assets_root: Path
+) -> tuple[list[dict[str, Any]], str]:
+    if not isinstance(raw_streak, dict):
+        raise ValueError("Invalid legacy configuration: streak must be a mapping")
+    legacy_nightfarer = raw_streak.get("eligible_nightfarer", "executor")
+    if not isinstance(legacy_nightfarer, str):
+        raise ValueError(
+            "Invalid legacy configuration: streak eligible_nightfarer must be a string"
+        )
+
+    available_nightfarers = _load_available_nightfarers(
+        assets_root, defaults["paths"]
+    )
+    nightfarer_by_casefold = {
+        nightfarer.casefold(): nightfarer for nightfarer in available_nightfarers
+    }
+    eligible_nightfarer = nightfarer_by_casefold.get(legacy_nightfarer.strip().casefold())
+    if eligible_nightfarer is None:
+        raise ValueError(
+            "Invalid legacy configuration: streak eligible_nightfarer "
+            f"{legacy_nightfarer!r} is not an available Nightfarer key"
+        )
+
+    challenge = Challenge(
+        id="legacy-streak",
+        name="Legacy streak",
+        type=ChallengeType.WINNING_STREAK,
+        eligible_nightfarer=eligible_nightfarer,
+        target=raw_streak.get("target", 100),
+    )
+    return [_challenge_to_config(challenge)], challenge.id
+
+
+def _challenge_from_config(raw: Any) -> Challenge:
+    if not isinstance(raw, dict):
+        raise ValueError("Invalid user configuration: each Challenge must be a mapping")
+    try:
+        excluded = raw.get("excluded_session_ids", [])
+        if not isinstance(excluded, list):
+            raise ValueError("excluded_session_ids must be a list")
+        return Challenge(
+            id=raw["id"],
+            name=raw["name"],
+            type=ChallengeType(raw["type"]),
+            excluded_session_ids=frozenset(excluded),
+            eligible_nightfarer=raw.get("eligible_nightfarer"),
+            target=raw.get("target"),
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"Invalid user configuration: Challenge: {error}") from error
+
+
+def challenges_from_config(config: dict[str, Any]) -> tuple[Challenge, ...]:
+    return tuple(_challenge_from_config(item) for item in config["challenges"])
+
+
+def _challenge_to_config(challenge: Challenge) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "id": challenge.id,
+        "name": challenge.name,
+        "type": challenge.type.value,
+        "excluded_session_ids": sorted(challenge.excluded_session_ids),
+    }
+    if challenge.type is ChallengeType.WINNING_STREAK:
+        result["eligible_nightfarer"] = challenge.eligible_nightfarer
+        result["target"] = challenge.target
+    return result
 
 
 def _get_config_value(config: dict[str, Any], path: tuple[str, ...]) -> Any:

@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from datetime import datetime
 import os
 from pathlib import Path
 import tempfile
 from threading import RLock
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
 from .models import NightlordVariant, Progress, Session, SessionStatus
 from .streak import StreakStats, calculate_streak
 
-
-SCHEMA_VERSION = 1
-DEFAULT_TARGET = 100
+SCHEMA_VERSION = 2
 
 
 class HistoryError(ValueError):
@@ -27,107 +26,83 @@ class HistoryError(ValueError):
 @dataclass(frozen=True, slots=True)
 class HistorySnapshot:
     sessions: tuple[Session, ...]
-    stats: StreakStats
+    # Compatibility projection for callers that have not adopted Challenges.
+    stats: StreakStats = field(
+        default_factory=lambda: StreakStats(0, 0, 0, 100, {})
+    )
 
 
 def default_history_path(project_root: Path) -> Path:
-    """Return the session history path beside the project configuration."""
     return project_root / "history.yaml"
 
 
 class HistoryRepository:
-    """Load and atomically save session records and their derived projection."""
+    """Load and atomically save authoritative session records only."""
 
     def __init__(
         self,
         path: Path,
-        default_target: int = DEFAULT_TARGET,
+        default_target: int = 100,
         *,
-        eligible_nightfarer: str,
+        eligible_nightfarer: str | None = None,
     ) -> None:
-        if isinstance(default_target, bool) or default_target <= 0:
-            raise ValueError("History target must be a positive integer")
         self.path = path
-        self.default_target = default_target
-        self.eligible_nightfarer = eligible_nightfarer
+        self._legacy_target = default_target
+        self._legacy_nightfarer = eligible_nightfarer
         self._lock = RLock()
 
     def load(self) -> HistorySnapshot:
         with self._lock:
             if not self.path.exists():
-                return self.save((), target=self.default_target)
+                return self.save(())
             try:
                 raw = yaml.safe_load(self.path.read_text(encoding="utf-8"))
-                sessions, target = self._parse_document(raw)
+                sessions, legacy = self._parse_document(raw)
             except (OSError, yaml.YAMLError, TypeError, KeyError, ValueError) as error:
                 raise HistoryError(f"Could not load history at {self.path}: {error}") from error
-
-            snapshot = self._snapshot(sessions, target)
+            snapshot = self._snapshot(sessions)
+            if legacy:
+                self._write_document(snapshot)
             return snapshot
 
-    def save(
-        self, sessions: Iterable[Session], target: int = DEFAULT_TARGET
-    ) -> HistorySnapshot:
+    def save(self, sessions: Iterable[Session], target: int | None = None) -> HistorySnapshot:
         with self._lock:
-            session_list = tuple(sessions)
-            snapshot = self._snapshot(session_list, target)
+            if target is not None:
+                self._legacy_target = target
+            snapshot = self._snapshot(tuple(sessions))
+            self._validate_unique_ids(snapshot.sessions)
             self._write_document(snapshot)
             return snapshot
 
-    def update_challenge_settings(
-        self, sessions: Iterable[Session], *, target: int, eligible_nightfarer: str
-    ) -> HistorySnapshot:
-        if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
-            raise ValueError("History target must be a positive integer")
-        if not isinstance(eligible_nightfarer, str) or not eligible_nightfarer.strip():
-            raise ValueError("Eligible Nightfarer must be a non-empty string")
-        with self._lock:
-            old_target = self.default_target
-            old_eligible_nightfarer = self.eligible_nightfarer
-            self.default_target = target
-            self.eligible_nightfarer = eligible_nightfarer
-            try:
-                snapshot = self._snapshot(tuple(sessions), target)
-                self._write_document(snapshot)
-            except (OSError, ValueError, yaml.YAMLError):
-                self.default_target = old_target
-                self.eligible_nightfarer = old_eligible_nightfarer
-                raise
-            return snapshot
-
-    def _snapshot(
-        self, sessions: tuple[Session, ...], target: int
-    ) -> HistorySnapshot:
-        try:
-            stats = calculate_streak(
+    def _snapshot(self, sessions: tuple[Session, ...]) -> HistorySnapshot:
+        if self._legacy_nightfarer is None:
+            return HistorySnapshot(sessions)
+        return HistorySnapshot(
+            sessions,
+            calculate_streak(
                 sessions,
-                target=target,
-                eligible_nightfarer=self.eligible_nightfarer,
-            )
-        except (TypeError, ValueError) as error:
-            raise HistoryError(f"Invalid session history: {error}") from error
-        return HistorySnapshot(sessions=sessions, stats=stats)
+                target=self._legacy_target,
+                eligible_nightfarer=self._legacy_nightfarer,
+            ),
+        )
 
-    def _parse_document(
-        self, raw: Any
-    ) -> tuple[tuple[Session, ...], int]:
+    def _parse_document(self, raw: Any) -> tuple[tuple[Session, ...], bool]:
         if not isinstance(raw, dict):
             raise HistoryError("History document must be a YAML mapping")
-        if raw.get("schema_version") != SCHEMA_VERSION:
+        version = raw.get("schema_version")
+        if version not in {1, SCHEMA_VERSION}:
             raise HistoryError("Unsupported history schema version")
-
-        challenge = raw.get("challenge")
         records = raw.get("sessions")
-        if not isinstance(challenge, dict) or not isinstance(records, list):
-            raise HistoryError("History must contain challenge and sessions")
-        target = challenge.get("target")
-        if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
-            raise HistoryError("History challenge target must be a positive integer")
+        if not isinstance(records, list):
+            raise HistoryError("History must contain sessions")
+        sessions = tuple(self._parse_session(record) for record in records)
+        self._validate_unique_ids(sessions)
+        return sessions, version == 1
 
-        sessions: list[Session] = []
-        for record in records:
-            sessions.append(self._parse_session(record))
-        return tuple(sessions), target
+    @staticmethod
+    def _validate_unique_ids(sessions: tuple[Session, ...]) -> None:
+        if len({session.id for session in sessions}) != len(sessions):
+            raise HistoryError("Session ids must be unique")
 
     @staticmethod
     def _parse_session(record: Any) -> Session:
@@ -140,72 +115,33 @@ class HistoryRepository:
             nightlord_data = nightlord
         else:
             raise HistoryError("Session Nightlord must be a mapping or null")
-
         hidden = nightlord_data.get("hidden", False)
         if not isinstance(hidden, bool):
             raise HistoryError("Nightlord hidden field must be a boolean")
-
         try:
-            variant = NightlordVariant(
-                nightlord_data.get("variant", NightlordVariant.UNKNOWN.value)
-            )
-            progress_value = record.get("progress")
-            progress = Progress(progress_value) if progress_value is not None else None
-            status = SessionStatus(record.get("status", SessionStatus.ACTIVE.value))
-            started_at = _parse_timestamp(record.get("started_at"), "started_at")
-            ended_value = record.get("ended_at")
-            ended_at = (
-                _parse_timestamp(ended_value, "ended_at")
-                if ended_value is not None
-                else None
-            )
-            session = Session(
+            return Session(
                 id=record["id"],
-                started_at=started_at,
-                ended_at=ended_at,
+                started_at=_parse_timestamp(record.get("started_at"), "started_at"),
+                ended_at=_parse_timestamp(record["ended_at"], "ended_at") if record.get("ended_at") is not None else None,
                 nightfarer=record.get("nightfarer"),
                 nightlord_name=nightlord_data.get("base_name"),
                 nightlord_hidden=hidden,
-                nightlord_variant=variant,
+                nightlord_variant=NightlordVariant(nightlord_data.get("variant", NightlordVariant.UNKNOWN.value)),
                 result_nightlord_name=record.get("result_nightlord_name"),
                 review_reason=record.get("review_reason"),
-                progress=progress,
-                status=status,
+                progress=Progress(record["progress"]) if record.get("progress") is not None else None,
+                status=SessionStatus(record.get("status", SessionStatus.ACTIVE.value)),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise HistoryError(f"Invalid session record: {error}") from error
-        return session
 
     def _write_document(self, snapshot: HistorySnapshot) -> None:
-        document = {
-            "schema_version": SCHEMA_VERSION,
-            "challenge": {
-                "target": snapshot.stats.target,
-                "current_streak": snapshot.stats.current_streak,
-                "best_streak": snapshot.stats.best_streak,
-                "total_eligible_victories": snapshot.stats.total_eligible_victories,
-            },
-            "sessions": [
-                _session_to_record(
-                    session,
-                    snapshot.stats.streak_numbers,
-                    self.eligible_nightfarer,
-                )
-                for session in snapshot.sessions
-            ],
-        }
+        document = {"schema_version": SCHEMA_VERSION, "sessions": [_session_to_record(session) for session in snapshot.sessions]}
         serialized = yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary_path: Path | None = None
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                dir=self.path.parent,
-                prefix=f".{self.path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary_file:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.path.parent, prefix=f".{self.path.name}.", suffix=".tmp", delete=False) as temporary_file:
                 temporary_path = Path(temporary_file.name)
                 temporary_file.write(serialized)
                 temporary_file.flush()
@@ -230,25 +166,15 @@ def _parse_timestamp(value: Any, field: str) -> datetime:
     return timestamp
 
 
-def _session_to_record(
-    session: Session,
-    streak_numbers: dict[str, int],
-    eligible_nightfarer: str,
-) -> dict[str, Any]:
+def _session_to_record(session: Session) -> dict[str, Any]:
     return {
         "id": session.id,
         "started_at": session.started_at.isoformat(),
         "ended_at": session.ended_at.isoformat() if session.ended_at else None,
         "nightfarer": session.nightfarer,
-        "nightlord": {
-            "hidden": session.nightlord_hidden,
-            "base_name": session.nightlord_name,
-            "variant": session.nightlord_variant.value,
-        },
+        "nightlord": {"hidden": session.nightlord_hidden, "base_name": session.nightlord_name, "variant": session.nightlord_variant.value},
         "result_nightlord_name": session.result_nightlord_name,
         "review_reason": session.review_reason,
         "progress": session.progress.value if session.progress else None,
         "status": session.status.value,
-        "counts_for_streak": session.counts_for_streak(eligible_nightfarer),
-        "streak_number": streak_numbers.get(session.id),
     }
