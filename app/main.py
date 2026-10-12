@@ -99,6 +99,7 @@ def main() -> int:
             opacity=settings.hud_opacity,
             font_size=settings.hud_font_size,
             recent_sessions=settings.hud_recent_sessions,
+            always_on_top=settings.hud_always_on_top,
             language=language,
             initial_geometry=state_repository.load_hud_geometry(),
             defaults_config=defaults_config,

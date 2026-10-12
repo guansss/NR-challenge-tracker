@@ -184,6 +184,9 @@ settings:
     recent_sessions:
       en: "Recent sessions shown"
       zh: "显示最近场次数量"
+    always_on_top:
+      en: "Keep HUD on top"
+      zh: "保持 HUD 置顶"
     save_screenshots:
       en: "Save debug screenshots"
       zh: "保存调试截图"

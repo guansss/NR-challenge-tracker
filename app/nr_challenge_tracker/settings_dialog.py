@@ -52,6 +52,7 @@ class _Field:
 _FIELDS = (
     _Field(("language",), "general", "language", True),
     _Field(("capture", "target_window"), "general", "text"),
+    _Field(("hud", "always_on_top"), "appearance", "bool"),
     _Field(("hud", "opacity"), "appearance", "float", False, 0.1, 1, 2),
     _Field(("hud", "font_size"), "appearance", "int", False, 8, 72),
     _Field(("hud", "recent_sessions"), "appearance", "int", False, 1, 100),

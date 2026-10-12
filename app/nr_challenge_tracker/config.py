@@ -81,6 +81,7 @@ EDITABLE_CONFIG_PATHS = (
     ("hud", "opacity"),
     ("hud", "font_size"),
     ("hud", "recent_sessions"),
+    ("hud", "always_on_top"),
     ("debug", "save_screenshots"),
 )
 
@@ -126,6 +127,7 @@ class _HudConfig(_ConfigSection):
     opacity: float = Field(ge=0.1, le=1.0)
     font_size: int = Field(gt=0)
     recent_sessions: int = Field(gt=0)
+    always_on_top: bool = True
 
 
 class _DebugConfig(_ConfigSection):
@@ -167,6 +169,7 @@ class AppSettings:
     hud_opacity: float
     hud_font_size: int
     hud_recent_sessions: int
+    hud_always_on_top: bool
     debug_save_screenshots: bool
 
 
@@ -260,6 +263,7 @@ def validate_project_config(
         hud_opacity=config.hud.opacity,
         hud_font_size=config.hud.font_size,
         hud_recent_sessions=config.hud.recent_sessions,
+        hud_always_on_top=config.hud.always_on_top,
         debug_save_screenshots=config.debug.save_screenshots,
     )
     return copy.deepcopy(config.model_dump()), settings

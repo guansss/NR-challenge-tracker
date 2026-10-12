@@ -46,6 +46,7 @@ hud:
   opacity: 0.10
   font_size: 16
   recent_sessions: 10
+  always_on_top: true
 
 debug:
   save_screenshots: false

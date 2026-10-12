@@ -241,6 +241,7 @@ class TrackerWindow(QMainWindow):
         font_size: int = 14,
         width: int = 420,
         recent_sessions: int = 10,
+        always_on_top: bool = True,
         language: str = "en",
         initial_geometry: tuple[int, int, int, int] | None = None,
         defaults_config: dict[str, Any] | None = None,
@@ -261,17 +262,14 @@ class TrackerWindow(QMainWindow):
         self._assets_root = assets_root
         self.recent_sessions = recent_sessions
         self._font_size = font_size
+        self._always_on_top = always_on_top
         self._drag_offset = None
         self._mouse_passthrough = False
         self._hotkey_registered = False
         self._live_result: dict[str, Any] | None = None
         self._history_sessions: tuple[Session, ...] | None = None
         self.setWindowTitle(tr(language, "app.title"))
-        self.setWindowFlags(
-            Qt.WindowType.Window
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-        )
+        self._apply_window_stay_on_top(always_on_top)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumWidth(320)
         self.setMaximumWidth(800)
@@ -409,6 +407,16 @@ class TrackerWindow(QMainWindow):
             if challenge.id == self._config["active_challenge_id"]
         )
 
+    def _apply_window_stay_on_top(self, always_on_top: bool) -> None:
+        was_visible = self.isVisible()
+        self._always_on_top = always_on_top
+        flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
+        if always_on_top:
+            flags |= Qt.WindowType.WindowStaysOnTopHint
+        self.setWindowFlags(flags)
+        if was_visible:
+            self.show()
+
     def apply_live_settings(self, config: dict[str, Any]) -> None:
         self._config = config
         self.recent_sessions = config["hud"]["recent_sessions"]
@@ -416,6 +424,7 @@ class TrackerWindow(QMainWindow):
             _panel_stylesheet(round(config["hud"]["opacity"] * 255))
         )
         self.set_font_size(config["hud"]["font_size"])
+        self._apply_window_stay_on_top(config["hud"].get("always_on_top", True))
         self.refresh()
 
     def set_font_size(self, font_size: int) -> None:

@@ -492,6 +492,43 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertEqual(window.goal_label.text(), "Goal: Executor streak")
         window.close()
 
+    def test_live_always_on_top_setting_keeps_hud_visible(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        config = _window_config()
+        window = TrackerWindow(sessions, Mock(), title_state, [], [], config=config)
+        window.show()
+        self.application.processEvents()
+        self.assertTrue(window.isVisible())
+        self.assertTrue(
+            window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint
+        )
+
+        config["hud"]["always_on_top"] = False
+        window.apply_live_settings(config)
+        self.application.processEvents()
+
+        self.assertTrue(window.isVisible())
+        self.assertFalse(
+            window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint
+        )
+
+        config["hud"]["always_on_top"] = True
+        window.apply_live_settings(config)
+        self.application.processEvents()
+
+        self.assertTrue(window.isVisible())
+        self.assertTrue(
+            window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint
+        )
+        window.close()
+
     def test_window_geometry_is_restored_after_close(self) -> None:
         sessions = Mock(
             snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))

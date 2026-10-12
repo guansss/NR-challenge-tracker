@@ -60,6 +60,29 @@ class LanguageConfigTests(unittest.TestCase):
 
         self.assertTrue(settings.debug_save_screenshots)
 
+    def test_hud_always_on_top_defaults_to_enabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory))[1]
+
+        self.assertTrue(settings.hud_always_on_top)
+
+    def test_hud_always_on_top_can_be_disabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["hud"]["always_on_top"] = False
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            settings = load_project_settings(Path(directory))[1]
+
+        self.assertFalse(settings.hud_always_on_top)
+
     def test_language_defaults_to_auto_for_old_config(self) -> None:
         self.assertEqual(self._load_with_language(None).language, "auto")
 
