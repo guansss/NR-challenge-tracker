@@ -936,6 +936,7 @@ class TrackerWindowTests(unittest.TestCase):
         self.application.processEvents()
         scroll_bar = window.history.verticalScrollBar()
         self.assertGreater(scroll_bar.maximum(), 0)
+        self.assertEqual(scroll_bar.value(), scroll_bar.minimum())
         scroll_bar.setValue(scroll_bar.maximum() // 2)
         middle_position = scroll_bar.value()
 

@@ -539,7 +539,10 @@ class TrackerWindow(QMainWindow):
         )
         scroll_bar = self.history.verticalScrollBar()
         scroll_position = scroll_bar.value()
-        was_at_bottom = scroll_position == scroll_bar.maximum()
+        was_at_bottom = (
+            scroll_bar.maximum() > scroll_bar.minimum()
+            and scroll_position == scroll_bar.maximum()
+        )
         recent_sessions = sorted(
             (
                 session
@@ -550,10 +553,7 @@ class TrackerWindow(QMainWindow):
             key=lambda session: session.started_at,
             reverse=True,
         )[: self.recent_sessions]
-        history_updated = (
-            self._history_sessions is not None
-            and tuple(recent_sessions) != self._history_sessions
-        )
+        history_updated = tuple(recent_sessions) != self._history_sessions
         self._history_sessions = tuple(recent_sessions)
         self.history.clear()
         for session in recent_sessions:
