@@ -272,16 +272,31 @@ class SessionService:
         nightfarer: str | None,
         nightlord_name: str | None,
         variant: NightlordVariant,
-        progress: Progress,
+        progress: Progress | None,
         started_at: datetime | None = None,
-        ended_at: datetime,
+        ended_at: datetime | None = None,
     ) -> Session:
-        if progress not in FINAL_OUTCOMES:
-            raise SessionTransitionError("Manual resolution requires an explicit outcome")
         with self._lock:
             session = self._find(session_id)
             if session.status is SessionStatus.DISCARDED:
                 raise SessionTransitionError("Discarded sessions cannot be resolved")
+            if progress is None:
+                updated = replace(
+                    session,
+                    started_at=started_at or session.started_at,
+                    nightfarer=nightfarer,
+                    nightlord_name=nightlord_name,
+                )
+                self._replace_and_commit(updated)
+                return updated
+            if progress not in FINAL_OUTCOMES:
+                raise SessionTransitionError(
+                    "Manual resolution requires an explicit outcome"
+                )
+            if ended_at is None:
+                raise SessionTransitionError(
+                    "Manual resolution requires an end time"
+                )
             self._validate_variant(nightlord_name, variant)
             updated = replace(
                 session,

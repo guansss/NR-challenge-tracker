@@ -830,10 +830,6 @@ class TrackerWindow(QMainWindow):
         session = next(item for item in unresolved if item.id == session_id)
         try:
             selected_progress = dialog.selected_progress()
-            if selected_progress is None:
-                raise SessionTransitionError(
-                    tr(self.language, "dialogs.resolve.explicit_outcome_required")
-                )
             self.sessions.resolve_session(
                 session_id,
                 nightfarer=selected_nightfarer,

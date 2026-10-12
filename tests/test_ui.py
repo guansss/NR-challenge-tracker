@@ -846,6 +846,62 @@ class TrackerWindowTests(unittest.TestCase):
         sessions.resolve_session.assert_called_once()
         window.deleteLater()
 
+    def test_active_session_can_save_preparation_without_an_outcome(self) -> None:
+        started_at = datetime(2026, 10, 3, tzinfo=timezone.utc)
+        awaiting_result = Session(
+            id="awaiting-result",
+            started_at=started_at,
+            nightfarer="executor",
+            nightlord_name="caligo",
+            status=SessionStatus.AWAITING_RESULT,
+        )
+        sessions = Mock(
+            snapshot=HistorySnapshot(
+                sessions=(awaiting_result,),
+                stats=_calculate_test_streak((awaiting_result,)),
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        dialog = Mock()
+        dialog.exec.return_value = 1
+        dialog.session_picker.currentData.return_value = awaiting_result.id
+        dialog.nightfarer.currentData.return_value = "wylder"
+        dialog.nightlord.currentData.return_value = "libra"
+        dialog.selected_progress.return_value = None
+        dialog.selected_variant.return_value = NightlordVariant.NORMAL
+        dialog.started_at.dateTime.return_value.toPython.return_value = started_at
+        dialog.ended_at.dateTime.return_value.toPython.return_value = started_at
+
+        window = TrackerWindow(
+            sessions,
+            Mock(),
+            title_state,
+            ["executor", "wylder"],
+            ["caligo", "libra"],
+            config=_window_config(),
+        )
+        window._refresh_timer.stop()
+
+        with patch(
+            "app.nr_challenge_tracker.ui.ResolveSessionDialog", return_value=dialog
+        ):
+            window.resolve_session()
+
+        sessions.resolve_session.assert_called_once_with(
+            awaiting_result.id,
+            nightfarer="wylder",
+            nightlord_name="libra",
+            variant=NightlordVariant.NORMAL,
+            progress=None,
+            started_at=started_at,
+            ended_at=started_at,
+        )
+        window.deleteLater()
+
     def test_history_refresh_preserves_scroll_and_jumps_to_top_on_update(self) -> None:
         sessions_list = tuple(
             Session(

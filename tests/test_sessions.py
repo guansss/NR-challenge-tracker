@@ -166,6 +166,31 @@ class SessionServiceTests(unittest.TestCase):
         self.assertEqual(resolved.status, SessionStatus.COMPLETED)
         self.assertEqual(self.service.snapshot.stats.current_streak, 1)
 
+    def test_manual_correction_without_outcome_preserves_session_state(self) -> None:
+        session = self.start_eligible_session()
+        awaiting_result = self.service.set_awaiting_result(session.id)
+
+        corrected = self.service.resolve_session(
+            session.id,
+            nightfarer="wylder",
+            nightlord_name="libra",
+            variant=NightlordVariant.EVERDARK,
+            progress=None,
+            started_at=START + timedelta(minutes=5),
+            ended_at=START + timedelta(hours=1),
+        )
+
+        self.assertEqual(corrected.nightfarer, "wylder")
+        self.assertEqual(corrected.nightlord_name, "libra")
+        self.assertEqual(corrected.started_at, START + timedelta(minutes=5))
+        self.assertEqual(corrected.status, awaiting_result.status)
+        self.assertEqual(corrected.progress, awaiting_result.progress)
+        self.assertEqual(corrected.ended_at, awaiting_result.ended_at)
+        self.assertEqual(
+            corrected.nightlord_variant, awaiting_result.nightlord_variant
+        )
+        self.assertEqual(corrected.result_nightlord_name, awaiting_result.result_nightlord_name)
+
     def test_everdark_variant_must_exist_in_catalog(self) -> None:
         validated_service = SessionService(
             HistoryRepository(
