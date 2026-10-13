@@ -44,9 +44,11 @@ HUD controls:
 - Open **Settings** from the bottom controls. Use the **Active Challenge**
   selector to switch Challenges or choose **Manage Challenges...** to create,
   edit, and delete them. A **Normal** Challenge counts all included sessions
-  and wins. A **Winning Streak** Challenge has its own eligible Nightfarer and
-  goal. Each Challenge can exclude sessions from its analysis without hiding
-  them from run history.
+  and wins. A **Winning Streak** Challenge has its own eligible Nightfarer (or
+  **Any Nightfarer**) and goal. Choose **Any Nightfarer** to count completed
+  runs across all characters, including runs whose character is unknown. Each
+  Challenge can exclude sessions from its analysis without hiding them from
+  run history.
 - **Lock** lets mouse clicks pass through the HUD so you can click the game
   underneath it. Press **Ctrl+Shift+L** to unlock it.
 - Close the HUD with **×** when you are finished. Your run history is saved

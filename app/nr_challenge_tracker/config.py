@@ -22,6 +22,7 @@ from pydantic import (
 )
 
 from .challenges import Challenge, ChallengeType
+from .models import ANY_NIGHTFARER
 
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -244,6 +245,7 @@ def validate_project_config(
         for challenge in challenges_from_config(data):
             if (
                 challenge.type is ChallengeType.WINNING_STREAK
+                and challenge.eligible_nightfarer != ANY_NIGHTFARER
                 and challenge.eligible_nightfarer not in available_nightfarers
             ):
                 raise ValueError(
@@ -439,7 +441,11 @@ def _legacy_streak_challenge(
     nightfarer_by_casefold = {
         nightfarer.casefold(): nightfarer for nightfarer in available_nightfarers
     }
-    eligible_nightfarer = nightfarer_by_casefold.get(legacy_nightfarer.strip().casefold())
+    eligible_nightfarer = (
+        ANY_NIGHTFARER
+        if legacy_nightfarer.strip().casefold() == ANY_NIGHTFARER
+        else nightfarer_by_casefold.get(legacy_nightfarer.strip().casefold())
+    )
     if eligible_nightfarer is None:
         raise ValueError(
             "Invalid legacy configuration: streak eligible_nightfarer "

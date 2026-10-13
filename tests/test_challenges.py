@@ -12,7 +12,12 @@ from app.nr_challenge_tracker.challenges import (
 )
 from app.nr_challenge_tracker.config import load_project_settings
 from app.nr_challenge_tracker.history import HistoryRepository
-from app.nr_challenge_tracker.models import Progress, Session, SessionStatus
+from app.nr_challenge_tracker.models import (
+    ANY_NIGHTFARER,
+    Progress,
+    Session,
+    SessionStatus,
+)
 
 
 def _session(
@@ -63,6 +68,23 @@ class ChallengeAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.total_wins, 1)
         self.assertEqual(analysis.streak.current_streak, 1)
         self.assertEqual(analysis.streak_numbers, {"executor-win": 1})
+
+    def test_any_nightfarer_streak_includes_every_identity(self) -> None:
+        analysis = analyze_challenge(
+            self.sessions,
+            Challenge(
+                "any", "Any Nightfarer", ChallengeType.WINNING_STREAK,
+                frozenset(), ANY_NIGHTFARER, 10,
+            ),
+        )
+
+        self.assertEqual(analysis.total_wins, 2)
+        self.assertEqual(analysis.streak.current_streak, 0)
+        self.assertEqual(analysis.streak.best_streak, 2)
+        self.assertEqual(
+            analysis.streak_numbers,
+            {"executor-win": 1, "other-win": 2},
+        )
 
 
 class SessionOnlyHistoryTests(unittest.TestCase):

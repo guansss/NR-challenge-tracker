@@ -1,7 +1,12 @@
 from datetime import datetime, timedelta, timezone
 import unittest
 
-from app.nr_challenge_tracker.models import Progress, Session, SessionStatus
+from app.nr_challenge_tracker.models import (
+    ANY_NIGHTFARER,
+    Progress,
+    Session,
+    SessionStatus,
+)
 from app.nr_challenge_tracker.streak import calculate_streak
 
 
@@ -12,7 +17,7 @@ ELIGIBLE_NIGHTFARER = "executor"
 def completed_session(
     session_id: str,
     minute: int,
-    nightfarer: str,
+    nightfarer: str | None,
     progress: Progress,
 ) -> Session:
     started_at = START + timedelta(minutes=minute)
@@ -53,6 +58,24 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.current_streak, 1)
         self.assertEqual(stats.total_eligible_victories, 1)
         self.assertEqual(stats.streak_numbers, {"recluse-win": 1})
+
+    def test_any_nightfarer_counts_all_identities_and_unknown_runs(self) -> None:
+        sessions = [
+            completed_session("executor-win", 0, "executor", Progress.DAY_3_VICTORY),
+            completed_session("recluse-win", 30, "recluse", Progress.DAY_3_VICTORY),
+            completed_session("unknown-loss", 60, None, Progress.DAY_2),
+            completed_session("unknown-win", 90, None, Progress.DAY_3_VICTORY),
+        ]
+
+        stats = calculate_streak(sessions, eligible_nightfarer=ANY_NIGHTFARER)
+
+        self.assertEqual(stats.current_streak, 1)
+        self.assertEqual(stats.best_streak, 2)
+        self.assertEqual(stats.total_eligible_victories, 3)
+        self.assertEqual(
+            stats.streak_numbers,
+            {"executor-win": 1, "recluse-win": 2, "unknown-win": 1},
+        )
 
     def test_finalized_executor_nonvictory_resets_streak(self) -> None:
         sessions = [

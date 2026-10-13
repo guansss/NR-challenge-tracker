@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
 from .i18n import localized_name, tr
 from .challenges import ChallengeType, analyze_challenge
 from .config import challenges_from_config
-from .models import NightlordVariant, Progress, Session, SessionStatus
+from .models import ANY_NIGHTFARER, NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
 from .runtime_paths import resource_root
 from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
@@ -490,7 +490,15 @@ class TrackerWindow(QMainWindow):
         if analysis.challenge.type is ChallengeType.WINNING_STREAK:
             if analysis.streak is None:
                 raise RuntimeError("Winning Streak Challenge has no streak analysis")
-            self.goal_label.setText(tr(self.language, "hud.goal", nightfarer=localized_name(self.language, "nightfarers", analysis.challenge.eligible_nightfarer or "")))
+            eligible_nightfarer = analysis.challenge.eligible_nightfarer or ""
+            nightfarer_name = (
+                tr(self.language, "challenge.any_nightfarer")
+                if eligible_nightfarer == ANY_NIGHTFARER
+                else localized_name(self.language, "nightfarers", eligible_nightfarer)
+            )
+            self.goal_label.setText(
+                tr(self.language, "hud.goal", nightfarer=nightfarer_name)
+            )
             self.streak_label.setText(tr(self.language, "hud.streak", current=analysis.streak.current_streak, target=analysis.streak.target, best=analysis.streak.best_streak))
         else:
             self.goal_label.setText(tr(self.language, "hud.normal_goal"))

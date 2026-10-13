@@ -177,6 +177,32 @@ class LanguageConfigTests(unittest.TestCase):
         self.assertEqual(config["hud"]["opacity"], 0.55)
         self.assertEqual(config["recognition"]["sampling"]["idle_ms"], 1000)
 
+    def test_user_config_accepts_any_as_eligible_nightfarer(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "challenges": [{
+                            "id": "wins",
+                            "name": "Any Nightfarer wins",
+                            "type": "winning_streak",
+                            "eligible_nightfarer": "any",
+                            "target": 75,
+                            "excluded_session_ids": [],
+                        }],
+                        "active_challenge_id": "wins",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config, _settings = load_project_settings(root, assets_root=ROOT)
+
+        self.assertEqual(
+            config["challenges"][0]["eligible_nightfarer"], "any"
+        )
+
     def test_user_config_rejects_unavailable_challenge_nightfarer(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -278,6 +304,25 @@ class LanguageConfigTests(unittest.TestCase):
             },
         )
         self.assertEqual(migrated["challenges"], config["challenges"])
+
+    def test_legacy_streak_config_accepts_any_nightfarer(self) -> None:
+        legacy = load_default_config(ROOT)
+        legacy["streak"] = {
+            "target": 75,
+            "eligible_nightfarer": "any",
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            Path(root, "config.yaml").write_text(
+                yaml.safe_dump(legacy), encoding="utf-8"
+            )
+
+            config, _settings = load_project_settings(root, assets_root=ROOT)
+
+        self.assertEqual(
+            config["challenges"][0]["eligible_nightfarer"], "any"
+        )
 
     def test_legacy_user_config_streak_is_migrated_and_persisted(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

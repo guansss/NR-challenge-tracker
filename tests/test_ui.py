@@ -24,8 +24,10 @@ from PySide6.QtWidgets import (
 
 from app.nr_challenge_tracker.config import load_default_config
 from app.nr_challenge_tracker.challenge_dialog import ChallengeManagerDialog
+from app.nr_challenge_tracker.challenges import ChallengeType
 from app.nr_challenge_tracker.history import HistorySnapshot
 from app.nr_challenge_tracker.models import (
+    ANY_NIGHTFARER,
     NightlordVariant,
     Progress,
     Session,
@@ -377,6 +379,49 @@ class ChallengeManagerDialogTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_missing_eligible_nightfarer_defaults_to_any(self) -> None:
+        config = load_default_config(ROOT)
+        config["challenges"] = [{
+            "id": "normal",
+            "name": "All Sessions",
+            "type": "normal",
+            "excluded_session_ids": [],
+        }]
+        config["active_challenge_id"] = "normal"
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (), ["executor"], parent, language="en"
+        )
+
+        dialog.type.setCurrentIndex(
+            dialog.type.findData(ChallengeType.WINNING_STREAK.value)
+        )
+
+        self.assertEqual(dialog.nightfarer.currentData(), ANY_NIGHTFARER)
+
+        dialog.close()
+
+    def test_any_nightfarer_is_available_as_a_streak_choice(self) -> None:
+        config = load_default_config(ROOT)
+        config["challenges"] = [{
+            "id": "streak",
+            "name": "Any Nightfarer",
+            "type": "winning_streak",
+            "eligible_nightfarer": ANY_NIGHTFARER,
+            "target": 100,
+            "excluded_session_ids": [],
+        }]
+        config["active_challenge_id"] = "streak"
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (), ["executor"], parent, language="en"
+        )
+
+        self.assertEqual(dialog.nightfarer.itemData(0), ANY_NIGHTFARER)
+        self.assertEqual(dialog.nightfarer.itemText(0), "Any Nightfarer")
+
+        dialog.close()
+
     def test_adding_challenge_with_blank_name_does_not_parse_unsaved_form(self) -> None:
         defaults = load_default_config(ROOT)
         config = load_default_config(ROOT)
@@ -513,6 +558,28 @@ class TrackerWindowTests(unittest.TestCase):
             [unittest.mock.call("preparation"), unittest.mock.call("result")],
         )
         window.deleteLater()
+
+    def test_any_nightfarer_challenge_displays_any_goal(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        window = TrackerWindow(
+            sessions,
+            Mock(),
+            title_state,
+            [],
+            [],
+            config=_window_config(ANY_NIGHTFARER),
+        )
+
+        self.assertEqual(window.goal_label.text(), "Goal: Any Nightfarer streak")
+
+        window.close()
 
     def test_live_font_setting_refreshes_existing_hud(self) -> None:
         sessions = Mock(

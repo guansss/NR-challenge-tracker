@@ -42,6 +42,9 @@ challenge:
   eligible_nightfarer:
     en: "Eligible Nightfarer"
     zh: "计入挑战的渡夜者"
+  any_nightfarer:
+    en: "Any Nightfarer"
+    zh: "任意渡夜者"
   target:
     en: "Streak goal"
     zh: "连胜目标"

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from .challenges import ChallengeType
 from .config import challenges_from_config
 from .i18n import localized_name, tr
-from .models import NightlordVariant, Progress, Session
+from .models import ANY_NIGHTFARER, NightlordVariant, Progress, Session
 
 
 class ChallengeManagerDialog(QDialog):
@@ -39,6 +39,9 @@ class ChallengeManagerDialog(QDialog):
         self.type.addItem(tr(language, "challenge.type.normal"), ChallengeType.NORMAL.value)
         self.type.addItem(tr(language, "challenge.type.winning_streak"), ChallengeType.WINNING_STREAK.value)
         self.nightfarer = QComboBox()
+        self.nightfarer.addItem(
+            tr(language, "challenge.any_nightfarer"), ANY_NIGHTFARER
+        )
         for value in nightfarers:
             self.nightfarer.addItem(localized_name(language, "nightfarers", value), value)
         self.target = QSpinBox()
@@ -142,7 +145,11 @@ class ChallengeManagerDialog(QDialog):
         self._current_challenge_id = challenge["id"]
         self.name.setText(challenge["name"])
         self.type.setCurrentIndex(self.type.findData(challenge["type"]))
-        self.nightfarer.setCurrentIndex(self.nightfarer.findData(challenge.get("eligible_nightfarer")))
+        self.nightfarer.setCurrentIndex(
+            self.nightfarer.findData(
+                challenge.get("eligible_nightfarer", ANY_NIGHTFARER)
+            )
+        )
         self.target.setValue(challenge.get("target", 100))
         excluded = set(challenge.get("excluded_session_ids", []))
         self.exclusions.clear()

@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+ANY_NIGHTFARER = "any"
+
+
 class SessionStatus(str, Enum):
     ACTIVE = "active"
     AWAITING_RESULT = "awaiting_result"
@@ -84,7 +87,10 @@ class Session:
         """Whether this record counts for the configured Nightfarer streak."""
         return (
             self.status is SessionStatus.COMPLETED
-            and self.nightfarer == eligible_nightfarer
+            and (
+                eligible_nightfarer == ANY_NIGHTFARER
+                or self.nightfarer == eligible_nightfarer
+            )
             and self.progress in {
                 Progress.DAY_1,
                 Progress.DAY_2,
