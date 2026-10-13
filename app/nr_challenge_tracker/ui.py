@@ -273,8 +273,6 @@ class TrackerWindow(QMainWindow):
         self.setWindowTitle(tr(language, "app.title"))
         self._apply_window_stay_on_top(always_on_top)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumWidth(320)
-        self.setMaximumWidth(800)
         self.resize(width, 420)
         if initial_geometry is not None:
             self.setGeometry(*initial_geometry)
