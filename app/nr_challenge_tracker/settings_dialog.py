@@ -6,6 +6,7 @@ from copy import deepcopy
 from html import escape
 from dataclasses import dataclass
 from pathlib import Path
+import tomllib
 from typing import Any, Literal
 
 from PySide6.QtCore import Qt
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from .challenge_dialog import ChallengeManagerDialog
+from .runtime_paths import resource_root
 from .config import (
     EDITABLE_CONFIG_PATHS,
     challenges_from_config,
@@ -167,6 +169,25 @@ _FIELDS = (
     ),
 )
 
+
+def _project_metadata() -> tuple[str, str]:
+    project_file = resource_root() / "pyproject.toml"
+    try:
+        metadata = tomllib.loads(project_file.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise RuntimeError(f"Could not load project metadata: {error}") from error
+
+    project = metadata.get("project")
+    urls = project.get("urls") if isinstance(project, dict) else None
+    version = project.get("version") if isinstance(project, dict) else None
+    repository_url = urls.get("Repository") if isinstance(urls, dict) else None
+    if not isinstance(version, str) or not isinstance(repository_url, str):
+        raise RuntimeError(
+            "pyproject.toml must define the project version and Repository URL"
+        )
+    return version, repository_url
+
+
 if {field.path for field in _FIELDS} != set(EDITABLE_CONFIG_PATHS):
     raise RuntimeError("Settings dialog fields do not match editable config fields")
 
@@ -216,6 +237,7 @@ class SettingsDialog(QDialog):
         self.saved_config: dict[str, Any] | None = None
         self.setWindowTitle(tr(language, "settings.title"))
         self.resize(580, 680)
+        version, repository_url = _project_metadata()
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
@@ -291,6 +313,24 @@ class SettingsDialog(QDialog):
                 row_layout.addWidget(note)
             row_layout.addWidget(reset_button)
             form.addRow(label, row)
+
+        about_box = QGroupBox(tr(language, "settings.groups.about"))
+        about_form = QFormLayout(about_box)
+        version_label = QLabel(version)
+        version_label.setObjectName("appVersion")
+        about_form.addRow(tr(language, "settings.about.version"), version_label)
+        repository_link = QLabel(
+            f'<a href="{escape(repository_url, quote=True)}">'
+            f"{escape(repository_url)}</a>"
+        )
+        repository_link.setObjectName("repositoryLink")
+        repository_link.setOpenExternalLinks(True)
+        repository_link.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+            | Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        about_form.addRow(tr(language, "settings.about.repository"), repository_link)
+        content_layout.addWidget(about_box)
 
         content_layout.addStretch(1)
         scroll = QScrollArea()

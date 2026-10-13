@@ -34,6 +34,7 @@ class BuildReleaseTests(unittest.TestCase):
             self.assertIn("name='Nightreign Challenge Tracker'", spec)
             self.assertIn("pyz,\n    a.scripts,\n    a.binaries,\n    a.datas,", spec)
             self.assertNotIn("COLLECT(", spec)
+            self.assertIn("(str(ROOT / 'pyproject.toml'), '.')", spec)
             self.assertIn("(str(ROOT / 'config.yaml'), '.')", spec)
             self.assertIn(
                 "(str(ROOT / 'app' / 'integrations' / 'bilibili.user.js'), "

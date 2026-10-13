@@ -26,6 +26,7 @@ a = Analysis(
     pathex=[str(ROOT)],
     binaries=[],
     datas=[
+        (str(ROOT / 'pyproject.toml'), '.'),
         (str(ROOT / 'config.yaml'), '.'),
         (str(ROOT / 'app' / 'integrations' / 'bilibili.user.js'), 'app/integrations'),
         (str(ROOT / 'assets' / 'templates'), 'assets/templates'),

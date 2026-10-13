@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import tomllib
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QGroupBox,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -226,6 +228,50 @@ class SettingsDialogTests(unittest.TestCase):
         )
         install_link = dialog.findChild(QLabel, "bilibiliInstallUrl")
         self.assertIsNotNone(install_link)
+        dialog.close()
+
+    def test_about_section_shows_project_metadata_and_external_repository_link(self) -> None:
+        defaults = load_default_config(ROOT)
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        dialog = SettingsDialog(
+            Path(tempfile.gettempdir()),
+            defaults,
+            defaults,
+            ["executor"],
+            language="en",
+            assets_root=ROOT,
+        )
+
+        version = dialog.findChild(QLabel, "appVersion")
+        repository_link = dialog.findChild(QLabel, "repositoryLink")
+
+        self.assertIsNotNone(version)
+        self.assertEqual(version.text(), project["project"]["version"])
+        self.assertIsNotNone(repository_link)
+        self.assertIn(
+            project["project"]["urls"]["Repository"],
+            repository_link.text(),
+        )
+        self.assertIn(
+            f">{project['project']['urls']['Repository']}</a>",
+            repository_link.text(),
+        )
+        self.assertTrue(repository_link.openExternalLinks())
+
+        dialog.close()
+
+        dialog = SettingsDialog(
+            Path(tempfile.gettempdir()),
+            defaults,
+            defaults,
+            ["executor"],
+            language="zh",
+            assets_root=ROOT,
+        )
+        labels = [label.text() for label in dialog.findChildren(QLabel)]
+        self.assertIn("关于", [box.title() for box in dialog.findChildren(QGroupBox)])
+        self.assertIn("版本", labels)
+        self.assertIn("项目地址", labels)
         dialog.close()
 
     def test_save_writes_only_the_edited_setting(self) -> None:

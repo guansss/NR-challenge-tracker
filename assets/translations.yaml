@@ -117,6 +117,16 @@ settings:
     appearance:
       en: "HUD and diagnostics"
       zh: "HUD 与诊断"
+    about:
+      en: "About"
+      zh: "关于"
+  about:
+    version:
+      en: "Version"
+      zh: "版本"
+    repository:
+      en: "Repository"
+      zh: "项目地址"
   fields:
     language:
       en: "Interface language"
