@@ -32,6 +32,7 @@ class BuildReleaseTests(unittest.TestCase):
             spec = spec_path.read_text(encoding="utf-8")
             self.assertIn(f"ROOT = Path({str(ROOT)!r})", spec)
             self.assertIn("name='Nightreign Challenge Tracker'", spec)
+            self.assertIn("upx=True", spec)
             self.assertIn("pyz,\n    a.scripts,\n    a.binaries,\n    a.datas,", spec)
             self.assertNotIn("COLLECT(", spec)
             self.assertIn("(str(ROOT / 'pyproject.toml'), '.')", spec)
