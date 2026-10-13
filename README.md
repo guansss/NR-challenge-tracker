@@ -56,13 +56,15 @@ HUD controls:
 
 Title syncing is optional. The tracker can update your room title to include
 your streak, but this requires the Tampermonkey browser extension and an
-additional userscript.
+additional userscript. The script is served by the tracker while its local API
+server is enabled.
 
 1. Install Tampermonkey in your browser.
-2. Download `bilibili.user.js` from the latest GitHub release and
-   install it in Tampermonkey.
-3. Start the tracker and sign in to the Bilibili account whose room title you
-   want to change.
+2. Start the tracker, open **Settings**, and click the userscript URL in the
+   **Bilibili** section. Your browser's userscript manager will show the
+   installation page. You can also copy the URL into your browser. Reinstall
+   the userscript if you later change the local API server's host or port.
+3. Sign in to the Bilibili account whose room title you want to change.
 4. Open the [Bilibili live center](https://link.bilibili.com/p/center/index#/my-room/start-live)
    for that account. Keep the tracker running while you want syncing to happen,
    and keep the live-center tab in the foreground. If the tab is in the

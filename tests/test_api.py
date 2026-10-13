@@ -1,5 +1,7 @@
 import io
 import json
+from pathlib import Path
+import tempfile
 import unittest
 from typing import Any
 
@@ -45,8 +47,21 @@ class TrackerApiTests(unittest.TestCase):
             self.reports.append((status, revision, message))
             return revision == self.state["revision"]
 
+        self.userscript_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.userscript_directory.cleanup)
+        self.userscript_path = (
+            Path(self.userscript_directory.name) / "bilibili.user.js"
+        )
         self.server = TrackerApiServer(
-            "127.0.0.1", 0, get_state, report
+            "127.0.0.1",
+            0,
+            get_state,
+            report,
+            self.userscript_path,
+        )
+        self.userscript_path.write_text(
+            "// ==UserScript==\nconst API_BASE = \"__LOCAL_API_BASE__\";\n",
+            encoding="utf-8",
         )
 
     def tearDown(self) -> None:
@@ -58,6 +73,15 @@ class TrackerApiTests(unittest.TestCase):
         path: str,
         payload: dict | None = None,
     ) -> tuple[int, dict[str, Any]]:
+        status, _headers, response_body = self.request_raw(method, path, payload)
+        return status, json.loads(response_body)
+
+    def request_raw(
+        self,
+        method: str,
+        path: str,
+        payload: dict | None = None,
+    ) -> tuple[int, dict[str, str], bytes]:
         body = json.dumps(payload).encode("utf-8") if payload is not None else None
         headers = []
         if body is not None:
@@ -79,7 +103,13 @@ class TrackerApiTests(unittest.TestCase):
             b"\r\n\r\n", 1
         )
         status = int(response_headers.split(b"\r\n", 1)[0].split()[1])
-        return status, json.loads(response_body)
+        headers = {
+            key.decode("ascii").lower(): value.decode("ascii").strip()
+            for line in response_headers.split(b"\r\n")[1:]
+            if b":" in line
+            for key, value in [line.split(b":", 1)]
+        }
+        return status, headers, response_body
 
     def test_state_endpoint_returns_current_state(self) -> None:
         status, payload = self.request("GET", "/api/state")
@@ -89,6 +119,50 @@ class TrackerApiTests(unittest.TestCase):
         self.assertEqual(
             {key: payload[key] for key in ("wins", "total", "streak", "goal")},
             {"wins": 0, "total": 0, "streak": 3, "goal": 100},
+        )
+
+    def test_userscript_endpoint_serves_installable_script_with_bound_api_url(self) -> None:
+        status, headers, content = self.request_raw("GET", "/bilibili.user.js")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            headers["content-type"], "application/javascript; charset=utf-8"
+        )
+        self.assertIn(b"// ==UserScript==", content)
+        self.assertIn(
+            f'const API_BASE = "http://127.0.0.1:{self.server.port}";'.encode(),
+            content,
+        )
+        self.assertNotIn(b"__LOCAL_API_BASE__", content)
+        self.assertEqual(
+            self.server.userscript_url,
+            f"http://127.0.0.1:{self.server.port}/bilibili.user.js",
+        )
+        self.userscript_path.write_text("changed after first read", encoding="utf-8")
+        _status, _headers, cached_content = self.request_raw(
+            "GET", "/bilibili.user.js"
+        )
+        self.assertEqual(cached_content, content)
+
+    def test_userscript_is_loaded_lazily_and_load_errors_are_reported(self) -> None:
+        self.userscript_path.unlink()
+
+        with self.assertLogs("app.nr_challenge_tracker.api", level="ERROR"):
+            status, payload = self.request("GET", "/bilibili.user.js")
+
+        self.assertEqual(status, 500)
+        self.assertEqual(payload, {"error": "userscript_unavailable"})
+
+        self.userscript_path.write_text(
+            "// ==UserScript==\nconst API_BASE = \"__LOCAL_API_BASE__\";\n",
+            encoding="utf-8",
+        )
+        status, _headers, content = self.request_raw("GET", "/bilibili.user.js")
+
+        self.assertEqual(status, 200)
+        self.assertIn(
+            f'const API_BASE = "http://127.0.0.1:{self.server.port}";'.encode(),
+            content,
         )
 
     def test_old_streak_endpoint_is_not_available(self) -> None:
@@ -135,7 +209,13 @@ class TrackerApiTests(unittest.TestCase):
 
     def test_non_loopback_bind_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "loopback"):
-            TrackerApiServer("0.0.0.0", 5678, lambda: {}, lambda *_args: True)
+            TrackerApiServer(
+                "0.0.0.0",
+                5678,
+                lambda: {},
+                lambda *_args: True,
+                Path("unused.user.js"),
+            )
 
     def test_state_error_returns_structured_service_unavailable(self) -> None:
         self.state_unavailable = True

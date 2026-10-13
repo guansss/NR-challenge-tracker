@@ -77,6 +77,7 @@ def main() -> int:
                 settings.api_port,
                 lambda: _api_view(sessions, title_state, window),
                 title_state.report_sync,
+                RESOURCES / "app" / "integrations" / "bilibili.user.js",
             )
             if settings.api_enabled
             else None
@@ -110,6 +111,7 @@ def main() -> int:
             config=project_config,
             config_root=ROOT,
             assets_root=RESOURCES,
+            userscript_url=api.userscript_url if api is not None else None,
         )
         window.settings_saved.connect(
             lambda config: _apply_live_settings(

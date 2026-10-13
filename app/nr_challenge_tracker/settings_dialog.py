@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from html import escape
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -197,6 +199,7 @@ class SettingsDialog(QDialog):
         *,
         language: str,
         assets_root: Path,
+        userscript_url: str | None = None,
         sessions: tuple[Session, ...] = (),
     ) -> None:
         super().__init__(parent)
@@ -206,6 +209,7 @@ class SettingsDialog(QDialog):
         self.nightfarers = nightfarers
         self.language = language
         self.assets_root = assets_root
+        self.userscript_url = userscript_url
         self.sessions = sessions
         self.editors: dict[str, QWidget] = {}
         self.reset_buttons: dict[str, QPushButton] = {}
@@ -245,6 +249,22 @@ class SettingsDialog(QDialog):
                     note = QLabel(tr(language, "settings.notes.bilibili_api_required"))
                     note.setWordWrap(True)
                     form.addRow(note)
+                    if userscript_url is not None:
+                        instruction = tr(
+                            language, "settings.notes.bilibili_userscript_install"
+                        )
+                        anchor = f'<a href="{escape(userscript_url, quote=True)}">{escape(userscript_url)}</a>'
+                        link = QLabel(
+                            escape(instruction).replace("\n", "<br>").format(url=anchor)
+                        )
+                        link.setObjectName("bilibiliInstallUrl")
+                        link.setOpenExternalLinks(True)
+                        link.setTextInteractionFlags(
+                            Qt.TextInteractionFlag.TextBrowserInteraction
+                            | Qt.TextInteractionFlag.TextSelectableByMouse
+                        )
+                        link.setWordWrap(True)
+                        form.addRow(link)
             editor = self._create_editor(field)
             field_key = ".".join(field.path)
             self.editors[field_key] = editor
@@ -253,8 +273,8 @@ class SettingsDialog(QDialog):
                 self._editor_value(editor) != self._value(self.defaults, field.path)
             )
             reset_button.clicked.connect(
-                lambda _checked=False, field=field, editor=editor, button=reset_button: self._reset_field(
-                    field, editor, button
+                lambda _checked=False, field=field, editor=editor, button=reset_button: (
+                    self._reset_field(field, editor, button)
                 )
             )
             self.reset_buttons[field_key] = reset_button
@@ -332,9 +352,7 @@ class SettingsDialog(QDialog):
         if field.kind == "nightfarer":
             editor = _NoWheelComboBox()
             for name in self.nightfarers:
-                editor.addItem(
-                    localized_name(self.language, "nightfarers", name), name
-                )
+                editor.addItem(localized_name(self.language, "nightfarers", name), name)
             editor.setCurrentIndex(editor.findData(value))
             return editor
         if field.kind == "bool":
@@ -379,9 +397,7 @@ class SettingsDialog(QDialog):
         self.saved_config = validated
         self.accept()
 
-    def _reset_field(
-        self, field: _Field, editor: QWidget, button: QPushButton
-    ) -> None:
+    def _reset_field(self, field: _Field, editor: QWidget, button: QPushButton) -> None:
         self._set_editor_value(editor, self._value(self.defaults, field.path))
         button.setEnabled(
             self._editor_value(editor) != self._value(self.defaults, field.path)
@@ -435,9 +451,7 @@ class SettingsDialog(QDialog):
         return value
 
     @staticmethod
-    def _set_value(
-        config: dict[str, Any], path: tuple[str, ...], value: Any
-    ) -> None:
+    def _set_value(config: dict[str, Any], path: tuple[str, ...], value: Any) -> None:
         section = config
         for part in path[:-1]:
             section = section[part]

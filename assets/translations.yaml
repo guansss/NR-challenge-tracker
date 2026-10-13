@@ -161,14 +161,14 @@ settings:
       en: "Victory margin"
       zh: "胜利判定差值"
     host:
-      en: "API host"
-      zh: "API 主机"
+      en: "Server host"
+      zh: "服务器主机"
     enabled:
       en: "Enable local API server"
       zh: "启用本地 API 服务"
     port:
-      en: "API port"
-      zh: "API 端口"
+      en: "Server port"
+      zh: "服务器端口"
     title_template:
       en: "Title template"
       zh: "标题模板"
@@ -194,6 +194,9 @@ settings:
     bilibili_api_required:
       en: "Title sync requires the local API server to be enabled."
       zh: "标题同步需要启用本地 API 服务才能使用。"
+    bilibili_userscript_install:
+      en: "Open this URL in your browser to install the userscript: {url}\nReinstall it if you change the server host or port."
+      zh: "在浏览器中打开此链接以安装用户脚本：{url}\n更改服务器主机或端口后，需要重新安装该脚本。"
   active_challenge:
     en: "Active Challenge"
     zh: "当前挑战"

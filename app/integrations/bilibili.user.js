@@ -6,13 +6,15 @@
 // @match        https://link.bilibili.com/p/center/index*
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
+// @connect      ::1
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  const LOCAL_API = "http://127.0.0.1:5678/api/state";
-  const STATUS_API = "http://127.0.0.1:5678/api/sync-status";
+  const API_BASE = "__LOCAL_API_BASE__";
+  const LOCAL_API = `${API_BASE}/api/state`;
+  const STATUS_API = `${API_BASE}/api/sync-status`;
   const POLL_INTERVAL_MS = 5000;
   const UI_SETTLE_MS = 300;
   const UI_TIMEOUT_MS = 5000;

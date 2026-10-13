@@ -176,7 +176,7 @@ class SettingsDialogTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
-    def test_api_server_can_be_disabled_and_bilibili_note_is_localized(self) -> None:
+    def test_api_server_can_be_disabled_and_userscript_url_is_interactive(self) -> None:
         defaults = load_default_config(ROOT)
         with tempfile.TemporaryDirectory() as directory:
             dialog = SettingsDialog(
@@ -186,15 +186,23 @@ class SettingsDialogTests(unittest.TestCase):
                 ["executor", "recluse"],
                 language="en",
                 assets_root=ROOT,
+                userscript_url="http://127.0.0.1:5678/bilibili.user.js",
             )
             enabled = dialog.editors["api.enabled"]
             self.assertTrue(enabled.isChecked())
             self.assertFalse(dialog.reset_buttons["api.enabled"].isEnabled())
-            labels = [label.text() for label in dialog.findChildren(QLabel)]
+            install_link = dialog.findChild(QLabel, "bilibiliInstallUrl")
+            self.assertIsNotNone(install_link)
             self.assertIn(
-                "Bilibili title sync requires the local API server to be enabled.",
-                labels,
+                "http://127.0.0.1:5678/bilibili.user.js",
+                install_link.text(),
             )
+            self.assertTrue(install_link.openExternalLinks())
+            self.assertTrue(
+                install_link.textInteractionFlags()
+                & Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            labels = [label.text() for label in dialog.findChildren(QLabel)]
             self.assertIn("Restart required", labels)
             enabled.setChecked(False)
             dialog._save()
@@ -212,9 +220,10 @@ class SettingsDialogTests(unittest.TestCase):
             ["executor", "recluse"],
             language="zh",
             assets_root=ROOT,
+            userscript_url="http://127.0.0.1:5678/bilibili.user.js",
         )
-        labels = [label.text() for label in dialog.findChildren(QLabel)]
-        self.assertIn("哔哩哔哩标题同步需要启用本地 API 服务。", labels)
+        install_link = dialog.findChild(QLabel, "bilibiliInstallUrl")
+        self.assertIsNotNone(install_link)
         dialog.close()
 
     def test_save_writes_only_the_edited_setting(self) -> None:

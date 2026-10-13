@@ -10,7 +10,6 @@ from tools.build_release import (
     ROOT,
     create_archive,
     read_version,
-    stage_userscript,
     validate_release_tag,
     write_pyinstaller_spec,
 )
@@ -36,6 +35,11 @@ class BuildReleaseTests(unittest.TestCase):
             self.assertIn("pyz,\n    a.scripts,\n    a.binaries,\n    a.datas,", spec)
             self.assertNotIn("COLLECT(", spec)
             self.assertIn("(str(ROOT / 'config.yaml'), '.')", spec)
+            self.assertIn(
+                "(str(ROOT / 'app' / 'integrations' / 'bilibili.user.js'), "
+                "'app/integrations')",
+                spec,
+            )
             self.assertIn("assets/templates", spec)
 
     def test_archive_contains_only_the_executable(self) -> None:
@@ -52,25 +56,6 @@ class BuildReleaseTests(unittest.TestCase):
             )
             with zipfile.ZipFile(archive_path) as archive:
                 self.assertEqual(archive.namelist(), ["Nightreign Challenge Tracker.exe"])
-
-    def test_stages_versioned_bilibili_userscript(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            dist_dir = Path(temporary_directory)
-            version = read_version()
-
-            userscript_path = stage_userscript(dist_dir, version)
-
-            self.assertEqual(userscript_path.name, f"bilibili-{version}.user.js")
-            self.assertEqual(
-                userscript_path.read_bytes(),
-                (ROOT / "app" / "integrations" / "bilibili.user.js").read_bytes(),
-            )
-            userscript = userscript_path.read_text(encoding="utf-8")
-            self.assertIn("/api/state", userscript)
-            self.assertNotIn("/api/streak", userscript)
-            for placeholder in ("payload.wins", "payload.total", "payload.streak", "payload.goal"):
-                self.assertIn(placeholder, userscript)
-
 
 if __name__ == "__main__":
     unittest.main()

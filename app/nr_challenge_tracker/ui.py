@@ -248,6 +248,7 @@ class TrackerWindow(QMainWindow):
         config: dict[str, Any] | None = None,
         config_root: Path | None = None,
         assets_root: Path | None = None,
+        userscript_url: str | None = None,
     ) -> None:
         super().__init__()
         self.sessions = sessions
@@ -260,6 +261,7 @@ class TrackerWindow(QMainWindow):
         self._config = config
         self._config_root = config_root
         self._assets_root = assets_root
+        self._userscript_url = userscript_url
         self.recent_sessions = recent_sessions
         self._font_size = font_size
         self._always_on_top = always_on_top
@@ -387,6 +389,7 @@ class TrackerWindow(QMainWindow):
             self,
             language=self.language,
             assets_root=self._assets_root,
+            userscript_url=self._userscript_url,
             sessions=self.sessions.snapshot.sessions,
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
