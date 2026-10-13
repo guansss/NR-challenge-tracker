@@ -373,6 +373,9 @@ hud:
   normal_totals:
     en: "{sessions} runs  |  {wins} wins"
     zh: "{sessions} 场  |  {wins} 胜"
+  history_count:
+    en: "Showing {visible} recent sessions (total {total})"
+    zh: "显示最近的 {visible} 场（共 {total} 场）"
   title_sync:
     en: "Title sync: {status}"
     zh: "直播标题同步：{status}"

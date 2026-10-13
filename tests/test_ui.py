@@ -849,6 +849,7 @@ class TrackerWindowTests(unittest.TestCase):
         labels = window.history.itemWidget(window.history.item(0)).findChildren(QLabel)
         self.assertIn("追踪者 - 永夜大嘴 - 最终日", [label.text() for label in labels])
         self.assertEqual(window.history.item(0).text(), "")
+        self.assertEqual(window.history.item(1).text(), "显示最近的 1 场（共 1 场）")
         window.deleteLater()
 
     def test_history_respects_configured_recent_session_limit(self) -> None:
@@ -883,13 +884,18 @@ class TrackerWindowTests(unittest.TestCase):
             config=_window_config(),
         )
 
-        self.assertEqual(window.history.count(), 2)
+        self.assertEqual(window.history.count(), 3)
         self.assertEqual(
             [
                 window.history.item(index).data(Qt.ItemDataRole.UserRole)
-                for index in range(window.history.count())
+                for index in range(2)
             ],
             ["session-3", "session-2"],
+        )
+        self.assertEqual(window.history.item(2).text(), "Showing 2 recent sessions (total 4)")
+        self.assertEqual(
+            window.history.item(2).flags(),
+            Qt.ItemFlag.NoItemFlags,
         )
         window.deleteLater()
 
@@ -956,7 +962,7 @@ class TrackerWindowTests(unittest.TestCase):
         ):
             window.resolve_session()
 
-        self.assertEqual(window.history.count(), 1)
+        self.assertEqual(window.history.count(), 2)
         self.assertEqual(
             window.history.item(0).data(Qt.ItemDataRole.UserRole), active.id
         )
@@ -1133,13 +1139,14 @@ class TrackerWindowTests(unittest.TestCase):
         )
         window._refresh_timer.stop()
         self.assertEqual(window.current_label.text(), "Current: Executor - Caligo")
-        self.assertEqual(window.history.count(), 1)
+        self.assertEqual(window.history.count(), 2)
         self.assertEqual(
             window.history.item(0).data(Qt.ItemDataRole.UserRole), "needs-resolution"
         )
         labels = window.history.itemWidget(window.history.item(0)).findChildren(QLabel)
         label_texts = [label.text() for label in labels]
         self.assertEqual(window.history.item(0).text(), "")
+        self.assertEqual(window.history.item(1).text(), "Showing 1 recent sessions (total 1)")
         self.assertIn(
             ended_at.astimezone().strftime("%Y/%m/%d %H:%M:%S"),
             label_texts,

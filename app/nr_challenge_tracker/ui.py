@@ -554,7 +554,7 @@ class TrackerWindow(QMainWindow):
             scroll_bar.maximum() > scroll_bar.minimum()
             and scroll_position == scroll_bar.maximum()
         )
-        recent_sessions = sorted(
+        history_sessions = sorted(
             (
                 session
                 for session in snapshot.sessions
@@ -563,7 +563,8 @@ class TrackerWindow(QMainWindow):
             ),
             key=lambda session: session.started_at,
             reverse=True,
-        )[: self.recent_sessions]
+        )
+        recent_sessions = history_sessions[: self.recent_sessions]
         history_updated = tuple(recent_sessions) != self._history_sessions
         self._history_sessions = tuple(recent_sessions)
         self.history.clear()
@@ -576,6 +577,16 @@ class TrackerWindow(QMainWindow):
             self.history.setItemWidget(item, row)
             if session.id == selected_id:
                 self.history.setCurrentItem(item)
+        count_item = QListWidgetItem(
+            tr(
+                self.language,
+                "hud.history_count",
+                visible=len(recent_sessions),
+                total=len(history_sessions),
+            )
+        )
+        count_item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.history.addItem(count_item)
         self.history.doItemsLayout()
         if history_updated:
             scroll_bar.setValue(scroll_bar.minimum())
