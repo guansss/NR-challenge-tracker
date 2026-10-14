@@ -32,7 +32,7 @@ class BuildReleaseTests(unittest.TestCase):
             spec = spec_path.read_text(encoding="utf-8")
             self.assertIn(f"ROOT = Path({str(ROOT)!r})", spec)
             self.assertIn("name='Nightreign Challenge Tracker'", spec)
-            self.assertIn("upx=True", spec)
+            self.assertIn("upx=False", spec)
             self.assertIn("pyz,\n    a.scripts,\n    a.binaries,\n    a.datas,", spec)
             self.assertNotIn("COLLECT(", spec)
             self.assertIn("(str(ROOT / 'pyproject.toml'), '.')", spec)
@@ -43,6 +43,15 @@ class BuildReleaseTests(unittest.TestCase):
                 spec,
             )
             self.assertIn("assets/templates", spec)
+
+    def test_generates_spec_with_upx_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            spec_path = write_pyinstaller_spec(
+                Path(temporary_directory) / "main.spec", use_upx=True
+            )
+
+            spec = spec_path.read_text(encoding="utf-8")
+            self.assertIn("upx=True", spec)
 
     def test_archive_contains_only_the_executable(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

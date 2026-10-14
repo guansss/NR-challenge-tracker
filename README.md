@@ -142,6 +142,12 @@ Build the portable release with:
 .\.venv\Scripts\python.exe .\tools\build_release.py
 ```
 
+UPX compression is disabled by default. Add `--upx` to use UPX:
+
+```powershell
+.\.venv\Scripts\python.exe .\tools\build_release.py --upx
+```
+
 The versioned ZIP is created in `dist`; the version is set in `pyproject.toml`.
 A GitHub Release is published automatically when a matching `v<version>` tag
 is pushed.

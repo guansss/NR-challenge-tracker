@@ -23,7 +23,7 @@ jobs:
       - name: Install UPX
         run: choco install upx --yes --no-progress
       - name: Build portable release
-        run: python tools/build_release.py
+        run: python tools/build_release.py --upx
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:

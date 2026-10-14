@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
@@ -53,7 +54,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=__USE_UPX__,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
@@ -85,18 +86,22 @@ def validate_release_tag(version: str, tag: str | None) -> None:
         )
 
 
-def write_pyinstaller_spec(spec_path: Path) -> Path:
+def write_pyinstaller_spec(spec_path: Path, use_upx: bool = False) -> Path:
     spec_path.write_text(
-        SPEC_CONTENT.replace("__PROJECT_ROOT__", repr(str(ROOT))),
+        SPEC_CONTENT.replace("__PROJECT_ROOT__", repr(str(ROOT))).replace(
+            "__USE_UPX__", str(use_upx)
+        ),
         encoding="utf-8",
     )
     return spec_path
 
 
-def build_executable() -> None:
+def build_executable(use_upx: bool = False) -> None:
     DIST_DIR.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="nr-challenge-tracker-") as temporary_directory:
-        spec_path = write_pyinstaller_spec(Path(temporary_directory) / "main.spec")
+        spec_path = write_pyinstaller_spec(
+            Path(temporary_directory) / "main.spec", use_upx=use_upx
+        )
         subprocess.run(
             [
                 sys.executable,
@@ -127,9 +132,17 @@ def create_archive(dist_dir: Path, version: str) -> Path:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--upx",
+        action="store_true",
+        help="compress the executable with UPX",
+    )
+    args = parser.parse_args()
+
     version = read_version()
     validate_release_tag(version, os.environ.get("GITHUB_REF_NAME"))
-    build_executable()
+    build_executable(use_upx=args.upx)
     archive_path = create_archive(DIST_DIR, version)
     print(f"Created {archive_path}")
     return 0
