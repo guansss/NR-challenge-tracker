@@ -39,15 +39,15 @@ NIGHTFARERS = (
 )
 
 NIGHTLORDS = (
-    "adel",
-    "caligo",
-    "fulghor",
     "gladius",
+    "adel",
     "gnoster",
-    "harmonia",
-    "heolstor",
-    "libra",
     "maris",
+    "libra",
+    "fulghor",
+    "caligo",
+    "heolstor",
+    "harmonia",
     "straghess",
 )
 

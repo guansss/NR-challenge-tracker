@@ -25,30 +25,6 @@ nightfarers:
 - id: undertaker
   portrait_template: assets/templates/nightfarers/undertaker.png
 nightlords:
-- id: adel
-  everdark_available_in_dataset: true
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/adel.png
-    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/adel.png
-    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
-- id: caligo
-  everdark_available_in_dataset: true
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/caligo.png
-    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/caligo.png
-    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
-- id: fulghor
-  everdark_available_in_dataset: true
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/fulghor.png
-    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/fulghor.png
-    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
 - id: gladius
   everdark_available_in_dataset: true
   templates:
@@ -57,6 +33,14 @@ nightlords:
   result_icon_templates:
     normal: assets/templates/nightlord_result_icons/gladius.png
     everdark: assets/templates/nightlord_result_icons/gladius-everdark.png
+- id: adel
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/adel.png
+    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/adel.png
+    everdark: assets/templates/nightlord_result_icons/adel-everdark.png
 - id: gnoster
   everdark_available_in_dataset: true
   templates:
@@ -65,30 +49,6 @@ nightlords:
   result_icon_templates:
     normal: assets/templates/nightlord_result_icons/gnoster.png
     everdark: assets/templates/nightlord_result_icons/gnoster-everdark.png
-- id: harmonia
-  everdark_available_in_dataset: true
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/harmonia.png
-    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/harmonia.png
-    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
-- id: heolstor
-  everdark_available_in_dataset: false
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/heolstor.png
-    everdark: null
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/heolstor.png
-    everdark: null
-- id: libra
-  everdark_available_in_dataset: true
-  templates:
-    normal: assets/templates/nightlord_preparation_icons/libra.png
-    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
-  result_icon_templates:
-    normal: assets/templates/nightlord_result_icons/libra.png
-    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
 - id: maris
   everdark_available_in_dataset: true
   templates:
@@ -97,6 +57,46 @@ nightlords:
   result_icon_templates:
     normal: assets/templates/nightlord_result_icons/maris.png
     everdark: assets/templates/nightlord_result_icons/maris-everdark.png
+- id: libra
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/libra.png
+    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/libra.png
+    everdark: assets/templates/nightlord_result_icons/libra-everdark.png
+- id: fulghor
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/fulghor.png
+    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/fulghor.png
+    everdark: assets/templates/nightlord_result_icons/fulghor-everdark.png
+- id: caligo
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/caligo.png
+    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/caligo.png
+    everdark: assets/templates/nightlord_result_icons/caligo-everdark.png
+- id: heolstor
+  everdark_available_in_dataset: false
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/heolstor.png
+    everdark: null
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/heolstor.png
+    everdark: null
+- id: harmonia
+  everdark_available_in_dataset: true
+  templates:
+    normal: assets/templates/nightlord_preparation_icons/harmonia.png
+    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
+  result_icon_templates:
+    normal: assets/templates/nightlord_result_icons/harmonia.png
+    everdark: assets/templates/nightlord_result_icons/harmonia-everdark.png
 - id: straghess
   everdark_available_in_dataset: false
   templates:

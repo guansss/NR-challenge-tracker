@@ -44,6 +44,7 @@ from app.nr_challenge_tracker.ui import (
     ResolveSessionDialog,
     TrackerWindow,
 )
+from tools.extract_templates import NIGHTLORDS as TEMPLATE_NIGHTLORDS
 
 ROOT = Path(__file__).resolve().parents[1]
 ELIGIBLE_NIGHTFARER = "executor"
@@ -98,6 +99,43 @@ class ResolveSessionDialogTests(unittest.TestCase):
             dialog.progress.findData(Progress.DAY_3_VICTORY)
         )
         self.assertIs(dialog.selected_progress(), Progress.DAY_3_VICTORY)
+        dialog.close()
+
+    def test_nightlord_catalogs_and_resolution_picker_use_requested_order(self) -> None:
+        expected_order = [
+            "gladius",
+            "adel",
+            "gnoster",
+            "maris",
+            "libra",
+            "fulghor",
+            "caligo",
+            "heolstor",
+            "harmonia",
+            "straghess",
+        ]
+        manifest = yaml.safe_load(
+            (ROOT / "assets" / "templates" / "manifest.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        translations = yaml.safe_load(
+            (ROOT / "assets" / "translations.yaml").read_text(encoding="utf-8")
+        )
+        nightlords = [entry["id"] for entry in manifest["nightlords"]]
+
+        self.assertEqual(list(TEMPLATE_NIGHTLORDS), expected_order)
+        self.assertEqual(nightlords, expected_order)
+        self.assertEqual(list(translations["nightlords"]), expected_order)
+
+        dialog = ResolveSessionDialog([], [], nightlords)
+        self.assertEqual(
+            [
+                dialog.nightlord.itemData(index)
+                for index in range(1, dialog.nightlord.count())
+            ],
+            expected_order,
+        )
         dialog.close()
 
     def test_dialog_labels_follow_configured_language(self) -> None:
@@ -1087,6 +1125,70 @@ class TrackerWindowTests(unittest.TestCase):
             [
                 tr("en", "hud.nightlord_stats_total_entry", wins=1, total=1),
                 tr("en", "hud.nightlord_stats_total_entry", wins=2, total=2),
+            ],
+        )
+        window.close()
+
+    def test_nightlord_stats_follow_requested_order(self) -> None:
+        nightlords = [
+            "gladius",
+            "adel",
+            "gnoster",
+            "maris",
+            "libra",
+            "fulghor",
+            "caligo",
+            "heolstor",
+            "harmonia",
+            "straghess",
+        ]
+        sessions = tuple(
+            Session(
+                id=f"run-{nightlord}",
+                started_at=datetime(2026, 10, 3, 12, minute=index, tzinfo=timezone.utc),
+                ended_at=datetime(2026, 10, 3, 12, minute=index, tzinfo=timezone.utc),
+                nightfarer=ELIGIBLE_NIGHTFARER,
+                nightlord_name=nightlord,
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            )
+            for index, nightlord in enumerate(reversed(nightlords))
+        )
+        session_service = Mock(
+            snapshot=HistorySnapshot(
+                sessions=sessions,
+                stats=_calculate_test_streak(sessions),
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+
+        window = TrackerWindow(
+            session_service,
+            Mock(),
+            title_state,
+            [],
+            nightlords,
+            config=_window_config(),
+        )
+
+        self.assertEqual(
+            [label.text() for label in window.nightlord_stats_grid.name_labels],
+            [
+                "Gladius",
+                "Adel",
+                "Gnoster",
+                "Maris",
+                "Libra",
+                "Fulghor",
+                "Caligo",
+                "Heolstor",
+                "Harmonia",
+                "Straghess",
             ],
         )
         window.close()

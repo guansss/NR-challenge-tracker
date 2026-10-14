@@ -767,11 +767,17 @@ class TrackerWindow(QMainWindow):
             raise RuntimeError(f"Unsupported Nightlord stats display mode: {stats_mode}")
         if nightlord_stats:
             entries = []
+            nightlord_order = {
+                name.casefold(): index for index, name in enumerate(self.nightlords)
+            }
             for name, stats in sorted(
                 nightlord_stats.items(),
-                key=lambda item: localized_name(
-                    self.language, "nightlords", item[0]
-                ).casefold(),
+                key=lambda item: (
+                    nightlord_order.get(item[0].casefold(), len(nightlord_order)),
+                    localized_name(
+                        self.language, "nightlords", item[0]
+                    ).casefold(),
+                ),
             ):
                 nightlord = localized_name(self.language, "nightlords", name)
                 wins = stats.normal.wins + stats.everdark.wins

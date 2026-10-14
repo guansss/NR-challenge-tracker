@@ -299,33 +299,33 @@ nightfarers:
     zh: "送葬者"
 
 nightlords:
-  adel:
-    en: "Adel"
-    zh: "大嘴"
-  caligo:
-    en: "Caligo"
-    zh: "冰龙"
-  fulghor:
-    en: "Fulghor"
-    zh: "人马"
   gladius:
     en: "Gladius"
     zh: "三狼"
+  adel:
+    en: "Adel"
+    zh: "大嘴"
   gnoster:
     en: "Gnoster"
     zh: "虫子"
-  harmonia:
-    en: "Harmonia"
-    zh: "七仙女"
-  heolstor:
-    en: "Heolstor"
-    zh: "牢布"
-  libra:
-    en: "Libra"
-    zh: "山羊"
   maris:
     en: "Maris"
     zh: "征兆"
+  libra:
+    en: "Libra"
+    zh: "山羊"
+  fulghor:
+    en: "Fulghor"
+    zh: "人马"
+  caligo:
+    en: "Caligo"
+    zh: "冰龙"
+  heolstor:
+    en: "Heolstor"
+    zh: "牢布"
+  harmonia:
+    en: "Harmonia"
+    zh: "七仙女"
   straghess:
     en: "Straghess"
     zh: "垃圾王"
