@@ -54,6 +54,14 @@ class ChallengeAnalysis:
     def streak_numbers(self) -> Mapping[str, int]:
         return self.streak.streak_numbers if self.streak is not None else {}
 
+    @property
+    def current_streak_session_ids(self) -> frozenset[str]:
+        return (
+            self.streak.current_streak_session_ids
+            if self.streak is not None
+            else frozenset()
+        )
+
 
 def analyze_challenge(
     sessions: Iterable[Session], challenge: Challenge

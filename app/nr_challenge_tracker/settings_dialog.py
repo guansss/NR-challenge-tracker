@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 from .challenge_dialog import ChallengeManagerDialog
 from .runtime_paths import resource_root
 from .config import (
-    EDITABLE_CONFIG_PATHS,
+    SETTINGS_DIALOG_CONFIG_PATHS,
     challenges_from_config,
     save_user_config,
     validate_project_config,
@@ -57,6 +57,7 @@ _FIELDS = (
     _Field(("language",), "general", "language", True),
     _Field(("capture", "target_window"), "general", "text"),
     _Field(("hud", "always_on_top"), "appearance", "bool"),
+    _Field(("hud", "show_nightlord_stats"), "appearance", "bool"),
     _Field(("hud", "opacity"), "appearance", "float", False, 0.1, 1, 2),
     _Field(("hud", "font_size"), "appearance", "int", False, 8, 72),
     _Field(("hud", "recent_sessions"), "appearance", "int", False, 1, 100),
@@ -188,7 +189,7 @@ def _project_metadata() -> tuple[str, str]:
     return version, repository_url
 
 
-if {field.path for field in _FIELDS} != set(EDITABLE_CONFIG_PATHS):
+if {field.path for field in _FIELDS} != set(SETTINGS_DIALOG_CONFIG_PATHS):
     raise RuntimeError("Settings dialog fields do not match editable config fields")
 
 

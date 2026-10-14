@@ -200,6 +200,9 @@ settings:
     always_on_top:
       en: "Keep HUD on top"
       zh: "保持 HUD 置顶"
+    show_nightlord_stats:
+      en: "Show Nightlord stats"
+      zh: "显示夜王统计"
     save_screenshots:
       en: "Save debug screenshots"
       zh: "保存调试截图"
@@ -383,6 +386,36 @@ hud:
   normal_totals:
     en: "{sessions} runs  |  {wins} wins"
     zh: "{sessions} 场  |  {wins} 胜"
+  nightlord_stats_heading_wins_aggregated:
+    en: "Nightlord wins"
+    zh: "夜王胜场"
+  nightlord_stats_heading_wins_total_aggregated:
+    en: "Nightlord wins / total"
+    zh: "夜王胜场/总场次"
+  nightlord_stats_heading_wins_separated:
+    en: "Nightlord wins"
+    zh: "夜王胜场"
+  nightlord_stats_wins_entry:
+    en: "{wins}"
+    zh: "{wins}"
+  nightlord_stats_total_entry:
+    en: "{wins}/{total}"
+    zh: "{wins}/{total}"
+  nightlord_stats_split_entry:
+    en: "Base {normal_wins} · ED {everdark_wins}"
+    zh: "普通 {normal_wins} · 永夜 {everdark_wins}"
+  nightlord_stats_click_tooltip:
+    en: "Click to cycle the stats display"
+    zh: "点击切换统计显示模式"
+  nightlord_stats_save_error_title:
+    en: "Could not save stats mode"
+    zh: "无法保存统计模式"
+  nightlord_stats_save_error:
+    en: "Could not save the stats display mode: {error}"
+    zh: "无法保存统计显示模式：{error}"
+  no_nightlord_stats:
+    en: "No data"
+    zh: "暂无"
   history_count:
     en: "Showing {visible} recent sessions (total {total})"
     zh: "显示最近的 {visible} 场（共 {total} 场）"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+from copy import deepcopy
 import os
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -27,6 +29,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSizeGrip,
     QVBoxLayout,
     QWidget,
@@ -34,11 +37,22 @@ from PySide6.QtWidgets import (
 
 from .i18n import localized_name, tr
 from .challenges import ChallengeType, analyze_challenge
-from .config import challenges_from_config
+from .config import (
+    DEFAULT_NIGHTLORD_STATS_MODE,
+    NIGHTLORD_STATS_MODES,
+    challenges_from_config,
+    save_user_config,
+    validate_project_config,
+)
 from .models import ANY_NIGHTFARER, NightlordVariant, Progress, Session, SessionStatus
 from .monitor import RecognitionMonitor
 from .runtime_paths import resource_root
-from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
+from .sessions import (
+    ACTIVE_STATUSES,
+    SessionService,
+    SessionTransitionError,
+    calculate_nightlord_stats,
+)
 from .settings_dialog import SettingsDialog
 from .title_state import TitleState
 
@@ -62,6 +76,211 @@ def _play_screen_cue(screen: str) -> None:
         _SCREEN_CUE_PLAYERS[screen] = player
     player.setPosition(0)
     player.play()
+
+
+class NightlordStatsGrid(QWidget):
+    clicked = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pressed = False
+        self.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
+        self._layout = QGridLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setHorizontalSpacing(8)
+        self._layout.setVerticalSpacing(4)
+        self.heading_label = QLabel(self)
+        self.heading_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
+        self.heading_label.setWordWrap(True)
+        self.heading_label.setStyleSheet("font-weight: 700;")
+        self.cell_widgets: list[QWidget] = []
+        self.cell_layouts: list[QHBoxLayout] = []
+        self.name_labels: list[QLabel] = []
+        self.stats_labels: list[QLabel] = []
+        self._column_count = 0
+        self._layout_dirty = True
+        self._click_tooltip = ""
+        self._content: tuple[str, tuple[tuple[str, str], ...]] | None = None
+
+    def set_stats_font(self, font: QFont) -> None:
+        self.setFont(font)
+        self.heading_label.setFont(font)
+        for label in (*self.name_labels, *self.stats_labels):
+            label.setFont(font)
+        self.reflow()
+
+    @property
+    def column_count(self) -> int:
+        return self._column_count
+
+    def set_content(
+        self,
+        heading: str,
+        cells: list[tuple[str, str]],
+        click_tooltip: str,
+    ) -> None:
+        cell_texts = tuple(cells)
+        content = (heading, cell_texts)
+        self.heading_label.setText(f"{heading}:")
+        self.setToolTip(click_tooltip)
+        if content == self._content and click_tooltip == self._click_tooltip:
+            self.reflow()
+            return
+
+        for cell in self.cell_widgets:
+            self._layout.removeWidget(cell)
+            cell.deleteLater()
+        self.cell_widgets = []
+        self.cell_layouts = []
+        self.name_labels = []
+        self.stats_labels = []
+        for name, stats in cell_texts:
+            cell = QWidget(self)
+            cell.setAttribute(
+                Qt.WidgetAttribute.WA_TransparentForMouseEvents
+            )
+            cell.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            )
+            cell_layout = QHBoxLayout(cell)
+            cell_layout.setContentsMargins(0, 0, 0, 0)
+            cell_layout.setSpacing(8)
+
+            name_label = QLabel(name, cell)
+            name_label.setAttribute(
+                Qt.WidgetAttribute.WA_TransparentForMouseEvents
+            )
+            name_label.setFont(self.font())
+            name_label.setWordWrap(True)
+            name_label.setAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            name_label.setSizePolicy(
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            )
+            stats_label = QLabel(stats, cell)
+            stats_label.setAttribute(
+                Qt.WidgetAttribute.WA_TransparentForMouseEvents
+            )
+            stats_label.setFont(self.font())
+            stats_label.setWordWrap(True)
+            stats_label.setAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            cell_layout.addWidget(name_label, 1)
+            cell_layout.addWidget(stats_label)
+            self.cell_widgets.append(cell)
+            self.cell_layouts.append(cell_layout)
+            self.name_labels.append(name_label)
+            self.stats_labels.append(stats_label)
+        self._content = content
+        self._click_tooltip = click_tooltip
+        self._layout_dirty = True
+        self.reflow()
+
+    def _set_name_label_widths(self, column_count: int) -> None:
+        widths_by_column = [0] * column_count
+        for index, label in enumerate(self.name_labels):
+            column = index % column_count
+            widths_by_column[column] = max(
+                widths_by_column[column],
+                label.fontMetrics().horizontalAdvance(label.text()),
+            )
+        for index, label in enumerate(self.name_labels):
+            label.setFixedWidth(widths_by_column[index % column_count])
+
+    @staticmethod
+    def _columns_for_width(
+        available_width: int,
+        max_cell_width: int,
+        spacing: int,
+        cell_count: int,
+    ) -> int:
+        if cell_count <= 0:
+            return 0
+        max_cell_width = max(1, max_cell_width)
+        spacing = max(0, spacing)
+        columns = max(
+            1,
+            (max(0, available_width) + spacing)
+            // (max_cell_width + spacing),
+        )
+        return min(cell_count, columns)
+
+    def reflow(self) -> None:
+        if not self.cell_widgets:
+            return
+        margins = self._layout.contentsMargins()
+        available_width = max(
+            0,
+            self.contentsRect().width() - margins.left() - margins.right(),
+        )
+        max_name_width = max(
+            name.fontMetrics().horizontalAdvance(name.text())
+            for name in self.name_labels
+        )
+        max_stats_width = max(
+            stats.fontMetrics().horizontalAdvance(stats.text())
+            for stats in self.stats_labels
+        )
+        max_cell_width = (
+            max_name_width
+            + max_stats_width
+            + self.cell_layouts[0].spacing()
+            + self.cell_layouts[0].contentsMargins().left()
+            + self.cell_layouts[0].contentsMargins().right()
+        )
+        column_count = self._columns_for_width(
+            available_width,
+            max_cell_width,
+            self._layout.horizontalSpacing(),
+            len(self.cell_widgets),
+        )
+        self._set_name_label_widths(column_count)
+        if column_count == self._column_count and not self._layout_dirty:
+            return
+
+        self._layout.removeWidget(self.heading_label)
+        for column in range(self._column_count):
+            self._layout.setColumnStretch(column, 0)
+        for cell in self.cell_widgets:
+            self._layout.removeWidget(cell)
+
+        self._layout.addWidget(self.heading_label, 0, 0, 1, column_count)
+        for index, cell in enumerate(self.cell_widgets):
+            row, column = divmod(index, column_count)
+            self._layout.addWidget(cell, row + 1, column)
+            self._layout.setColumnStretch(column, 1)
+
+        self._column_count = column_count
+        self._layout_dirty = False
+        self._layout.invalidate()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() is Qt.MouseButton.LeftButton:
+            self._pressed = True
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() is Qt.MouseButton.LeftButton:
+            was_pressed = self._pressed
+            self._pressed = False
+            if was_pressed and self.rect().contains(event.position().toPoint()):
+                self.clicked.emit()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.reflow()
 
 
 def _panel_stylesheet(alpha: int) -> str:
@@ -312,6 +531,10 @@ class TrackerWindow(QMainWindow):
         self.current_label.setWordWrap(True)
         self.streak_label = QLabel("0 / 100")
         self.streak_label.setStyleSheet("color: #9ed7ae;")
+        self.nightlord_stats_grid = NightlordStatsGrid()
+        self.nightlord_stats_grid.clicked.connect(
+            self._cycle_nightlord_stats_mode
+        )
         status_panel = QHBoxLayout()
         self._status_panel = status_panel
         status_panel.setDirection(QBoxLayout.Direction.TopToBottom)
@@ -333,6 +556,7 @@ class TrackerWindow(QMainWindow):
         layout.addWidget(self.streak_label)
         layout.addWidget(self.current_label)
         layout.addWidget(self.history, 1)
+        layout.addWidget(self.nightlord_stats_grid)
         layout.addLayout(status_panel)
 
         actions = QHBoxLayout()
@@ -425,6 +649,44 @@ class TrackerWindow(QMainWindow):
         self._apply_window_stay_on_top(config["hud"].get("always_on_top", True))
         self.refresh()
 
+    def _cycle_nightlord_stats_mode(self) -> None:
+        try:
+            if (
+                self._config is None
+                or self._defaults_config is None
+                or self._config_root is None
+            ):
+                raise RuntimeError(
+                    "Nightlord stats display settings cannot be saved"
+                )
+            current_mode = self._config["hud"].get(
+                "nightlord_stats_mode", DEFAULT_NIGHTLORD_STATS_MODE
+            )
+            mode_index = NIGHTLORD_STATS_MODES.index(current_mode)
+            next_mode = NIGHTLORD_STATS_MODES[
+                (mode_index + 1) % len(NIGHTLORD_STATS_MODES)
+            ]
+            updated_config = deepcopy(self._config)
+            updated_config["hud"]["nightlord_stats_mode"] = next_mode
+            validated, _settings = validate_project_config(
+                updated_config,
+                assets_root=self._assets_root or self._config_root,
+            )
+            save_user_config(self._config_root, self._defaults_config, validated)
+        except (RuntimeError, ValueError) as error:
+            QMessageBox.warning(
+                self,
+                tr(self.language, "hud.nightlord_stats_save_error_title"),
+                tr(
+                    self.language,
+                    "hud.nightlord_stats_save_error",
+                    error=str(error),
+                ),
+            )
+            return
+        self._config = validated
+        self.refresh()
+
     def set_font_size(self, font_size: int) -> None:
         self._font_size = font_size
         panel_font = QFont(self._panel.font())
@@ -433,14 +695,15 @@ class TrackerWindow(QMainWindow):
         self.heading.setFont(panel_font)
         self.close_button.setFont(panel_font)
         goal_font = QFont(panel_font)
-        goal_font.setPixelSize(round(font_size * 0.9))
-        self.goal_label.setFont(goal_font)
+        goal_font.setPixelSize(round(font_size * 0.8))
+        self.goal_label.setFont(panel_font)
         current_font = QFont(panel_font)
         current_font.setWeight(QFont.Weight.DemiBold)
         self.current_label.setFont(current_font)
         streak_font = QFont(panel_font)
         streak_font.setPixelSize(round(font_size * 2))
         self.streak_label.setFont(streak_font)
+        self.nightlord_stats_grid.set_stats_font(panel_font)
         status_font = QFont(panel_font)
         status_font.setPixelSize(round(font_size * 0.8))
         self.monitor_label.setFont(status_font)
@@ -479,6 +742,68 @@ class TrackerWindow(QMainWindow):
     def refresh(self) -> None:
         snapshot = self.sessions.snapshot
         analysis = analyze_challenge(snapshot.sessions, self._active_challenge())
+        show_nightlord_stats = (
+            self._config["hud"].get("show_nightlord_stats", True)
+            if self._config is not None
+            else True
+        )
+        self.nightlord_stats_grid.setVisible(show_nightlord_stats)
+        stats_sessions = snapshot.sessions
+        if analysis.challenge.type is ChallengeType.WINNING_STREAK:
+            stats_sessions = tuple(
+                session
+                for session in snapshot.sessions
+                if session.id in analysis.current_streak_session_ids
+            )
+        nightlord_stats = calculate_nightlord_stats(stats_sessions)
+        stats_mode = (
+            self._config["hud"].get(
+                "nightlord_stats_mode", DEFAULT_NIGHTLORD_STATS_MODE
+            )
+            if self._config is not None
+            else DEFAULT_NIGHTLORD_STATS_MODE
+        )
+        if stats_mode not in NIGHTLORD_STATS_MODES:
+            raise RuntimeError(f"Unsupported Nightlord stats display mode: {stats_mode}")
+        if nightlord_stats:
+            entries = []
+            for name, stats in sorted(
+                nightlord_stats.items(),
+                key=lambda item: localized_name(
+                    self.language, "nightlords", item[0]
+                ).casefold(),
+            ):
+                nightlord = localized_name(self.language, "nightlords", name)
+                wins = stats.normal.wins + stats.everdark.wins
+                total = stats.normal.runs + stats.everdark.runs
+                if stats_mode == "wins_aggregated":
+                    entry_key = "hud.nightlord_stats_wins_entry"
+                    entry_values = {"wins": wins}
+                elif stats_mode == "wins_total_aggregated":
+                    entry_key = "hud.nightlord_stats_total_entry"
+                    entry_values = {
+                        "wins": wins,
+                        "total": total,
+                    }
+                else:
+                    entry_key = "hud.nightlord_stats_split_entry"
+                    entry_values = {
+                        "normal_wins": stats.normal.wins,
+                        "everdark_wins": stats.everdark.wins,
+                    }
+                entries.append(
+                    (
+                        nightlord,
+                        tr(self.language, entry_key, **entry_values),
+                    )
+                )
+        else:
+            entries = [(tr(self.language, "hud.no_nightlord_stats"), "")]
+        self.nightlord_stats_grid.set_content(
+            tr(self.language, f"hud.nightlord_stats_heading_{stats_mode}"),
+            entries,
+            tr(self.language, "hud.nightlord_stats_click_tooltip"),
+        )
         try:
             title_view = self.title_state.update(analysis)
         except ValueError as error:

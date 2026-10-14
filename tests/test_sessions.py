@@ -6,8 +6,19 @@ import unittest
 import yaml
 
 from app.nr_challenge_tracker.history import HistoryRepository
-from app.nr_challenge_tracker.models import NightlordVariant, Progress, SessionStatus
-from app.nr_challenge_tracker.sessions import SessionService, SessionTransitionError
+from app.nr_challenge_tracker.models import (
+    NightlordVariant,
+    Progress,
+    Session,
+    SessionStatus,
+)
+from app.nr_challenge_tracker.sessions import (
+    NightlordStats,
+    NightlordVariantStats,
+    SessionService,
+    SessionTransitionError,
+    calculate_nightlord_stats,
+)
 
 
 START = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
@@ -33,6 +44,72 @@ class SessionServiceTests(unittest.TestCase):
             nightlord_name="harmonia",
             hidden_nightlord=False,
             started_at=START,
+        )
+
+    def test_nightlord_stats_separate_variants_and_ignore_unassignable_sessions(self) -> None:
+        sessions = (
+            Session(
+                id="normal-win",
+                started_at=START,
+                ended_at=START + timedelta(minutes=1),
+                nightlord_name="Harmonia",
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id="normal-loss",
+                started_at=START,
+                ended_at=START + timedelta(minutes=2),
+                nightlord_name="harmonia",
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_2,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id="everdark-win",
+                started_at=START,
+                ended_at=START + timedelta(minutes=3),
+                nightlord_name="harmonia",
+                nightlord_variant=NightlordVariant.EVERDARK,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id="unknown-variant",
+                started_at=START,
+                ended_at=START + timedelta(minutes=4),
+                nightlord_name="harmonia",
+                nightlord_variant=NightlordVariant.UNKNOWN,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id="unknown-identity",
+                started_at=START,
+                ended_at=START + timedelta(minutes=5),
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id="unresolved",
+                started_at=START,
+                nightlord_name="harmonia",
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.UNRESOLVED,
+            ),
+        )
+
+        self.assertEqual(
+            calculate_nightlord_stats(sessions),
+            {
+                "Harmonia": NightlordStats(
+                    normal=NightlordVariantStats(runs=2, wins=1),
+                    everdark=NightlordVariantStats(runs=1, wins=1),
+                )
+            },
         )
 
     def test_session_history_remains_unchanged_by_runtime_analysis(self) -> None:

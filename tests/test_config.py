@@ -100,6 +100,77 @@ class LanguageConfigTests(unittest.TestCase):
 
         self.assertFalse(settings.hud_always_on_top)
 
+    def test_hud_nightlord_stats_visibility_defaults_to_enabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["hud"].pop("show_nightlord_stats")
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            loaded, settings = load_project_settings(
+                Path(directory), assets_root=ROOT
+            )
+
+        self.assertTrue(loaded["hud"]["show_nightlord_stats"])
+        self.assertTrue(settings.hud_show_nightlord_stats)
+
+    def test_hud_nightlord_stats_visibility_can_be_disabled(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["hud"]["show_nightlord_stats"] = False
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.yaml"
+            path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+            _loaded, settings = load_project_settings(
+                Path(directory), assets_root=ROOT
+            )
+
+        self.assertFalse(settings.hud_show_nightlord_stats)
+
+    def test_hud_nightlord_stats_mode_defaults_to_aggregated_wins(self) -> None:
+        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+        config["hud"].pop("nightlord_stats_mode")
+        _use_workspace_manifest(config)
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "config.yaml").write_text(
+                yaml.safe_dump(config), encoding="utf-8"
+            )
+
+            loaded, _settings = load_project_settings(
+                Path(directory), assets_root=ROOT
+            )
+
+        self.assertEqual(loaded["hud"]["nightlord_stats_mode"], "wins_aggregated")
+
+    def test_hud_nightlord_stats_mode_is_saved_as_user_override(self) -> None:
+        defaults = load_default_config(ROOT)
+        effective = deepcopy(defaults)
+        effective["hud"]["nightlord_stats_mode"] = "wins_separated"
+
+        with tempfile.TemporaryDirectory() as directory:
+            save_user_config(Path(directory), defaults, effective)
+            saved = yaml.safe_load(
+                Path(directory, "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(
+            saved["hud"]["nightlord_stats_mode"], "wins_separated"
+        )
+
+    def test_hud_nightlord_stats_mode_rejects_unknown_values(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {"hud": {"nightlord_stats_mode": "invalid_mode"}}
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "nightlord_stats_mode"):
+                load_project_settings(Path(directory), assets_root=ROOT)
+
     def test_language_defaults_to_auto_for_old_config(self) -> None:
         self.assertEqual(self._load_with_language(None).language, "auto")
 

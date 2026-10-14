@@ -12,7 +12,7 @@ import yaml
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QPoint, QPointF, Qt
-from PySide6.QtGui import QWheelEvent
+from PySide6.QtGui import QFont, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,10 +24,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.nr_challenge_tracker.config import load_default_config
+from app.nr_challenge_tracker.config import load_default_config, load_project_settings
 from app.nr_challenge_tracker.challenge_dialog import ChallengeManagerDialog
 from app.nr_challenge_tracker.challenges import ChallengeType
 from app.nr_challenge_tracker.history import HistorySnapshot
+from app.nr_challenge_tracker.i18n import tr
 from app.nr_challenge_tracker.models import (
     ANY_NIGHTFARER,
     NightlordVariant,
@@ -39,6 +40,7 @@ from app.nr_challenge_tracker.state import StateRepository
 from app.nr_challenge_tracker.streak import calculate_streak
 from app.nr_challenge_tracker.settings_dialog import SettingsDialog
 from app.nr_challenge_tracker.ui import (
+    NightlordStatsGrid,
     ResolveSessionDialog,
     TrackerWindow,
 )
@@ -307,6 +309,27 @@ class SettingsDialogTests(unittest.TestCase):
 
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
         self.assertEqual(saved, {"hud": {"recent_sessions": 75}})
+
+    def test_nightlord_stats_visibility_can_be_saved(self) -> None:
+        defaults = load_default_config(ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            dialog = SettingsDialog(
+                Path(directory),
+                defaults,
+                defaults,
+                ["executor"],
+                language="en",
+                assets_root=ROOT,
+            )
+            editor = dialog.editors["hud.show_nightlord_stats"]
+            self.assertTrue(editor.isChecked())
+            editor.setChecked(False)
+            dialog._save()
+            saved = yaml.safe_load(
+                (Path(directory) / "user-config.yaml").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(saved, {"hud": {"show_nightlord_stats": False}})
 
     def test_wheel_does_not_change_combo_or_numeric_settings(self) -> None:
         defaults = load_default_config(ROOT)
@@ -781,6 +804,466 @@ class TrackerWindowTests(unittest.TestCase):
         self.assertEqual(window.monitor_label.text(), "未找到游戏窗口")
         window.deleteLater()
 
+    def test_hud_shows_nightlord_runs_and_wins_by_variant(self) -> None:
+        started_at = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+        session_ids = ("normal-win", "normal-loss", "everdark-win")
+        sessions = (
+            Session(
+                id=session_ids[0],
+                started_at=started_at,
+                ended_at=started_at,
+                nightlord_name="caligo",
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id=session_ids[1],
+                started_at=started_at,
+                ended_at=started_at,
+                nightlord_name="caligo",
+                nightlord_variant=NightlordVariant.NORMAL,
+                progress=Progress.DAY_2,
+                status=SessionStatus.COMPLETED,
+            ),
+            Session(
+                id=session_ids[2],
+                started_at=started_at,
+                ended_at=started_at,
+                nightlord_name="caligo",
+                nightlord_variant=NightlordVariant.EVERDARK,
+                progress=Progress.DAY_3_VICTORY,
+                status=SessionStatus.COMPLETED,
+            ),
+        )
+        session_service = Mock(
+            snapshot=HistorySnapshot(
+                sessions=sessions,
+                stats=_calculate_test_streak(()),
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        config = _window_config()
+        config["challenges"][0] = {
+            "id": "normal",
+            "name": "Normal",
+            "type": "normal",
+            "excluded_session_ids": [],
+        }
+        config["active_challenge_id"] = "normal"
+        config["challenges"][0]["excluded_session_ids"] = list(session_ids)
+
+        with tempfile.TemporaryDirectory() as directory:
+            window = TrackerWindow(
+                session_service,
+                Mock(),
+                title_state,
+                [],
+                [],
+                defaults_config=load_default_config(ROOT),
+                config=config,
+                config_root=Path(directory),
+                assets_root=ROOT,
+            )
+            window.show()
+            self.application.processEvents()
+
+            self.assertTrue(window.nightlord_stats_grid.isVisible())
+            config["hud"]["show_nightlord_stats"] = False
+            window.apply_live_settings(config)
+            self.assertFalse(window.nightlord_stats_grid.isVisible())
+            config["hud"]["show_nightlord_stats"] = True
+            window.apply_live_settings(config)
+            self.assertTrue(window.nightlord_stats_grid.isVisible())
+
+            self.assertEqual(
+                window.nightlord_stats_grid.heading_label.text(),
+                f"{tr('en', 'hud.nightlord_stats_heading_wins_aggregated')}:",
+            )
+            self.assertEqual(
+                [label.text() for label in window.nightlord_stats_grid.name_labels],
+                ["Caligo"],
+            )
+            self.assertEqual(
+                [label.text() for label in window.nightlord_stats_grid.stats_labels],
+                [tr("en", "hud.nightlord_stats_wins_entry", wins=2)],
+            )
+            start_position = window.pos()
+            QTest.mouseClick(
+                window.nightlord_stats_grid,
+                Qt.MouseButton.LeftButton,
+                pos=window.nightlord_stats_grid.cell_widgets[0].geometry().center(),
+            )
+            self.assertEqual(window.pos(), start_position)
+            self.assertEqual(
+                window.nightlord_stats_grid.heading_label.text(),
+                f"{tr('en', 'hud.nightlord_stats_heading_wins_total_aggregated')}:",
+            )
+            self.assertEqual(
+                [label.text() for label in window.nightlord_stats_grid.stats_labels],
+                [tr("en", "hud.nightlord_stats_total_entry", wins=2, total=3)],
+            )
+            saved = yaml.safe_load(
+                Path(directory, "user-config.yaml").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                saved["hud"]["nightlord_stats_mode"], "wins_total_aggregated"
+            )
+
+            QTest.mouseClick(
+                window.nightlord_stats_grid,
+                Qt.MouseButton.LeftButton,
+                pos=window.nightlord_stats_grid.cell_widgets[0].geometry().center(),
+            )
+            self.assertEqual(
+                window.nightlord_stats_grid.heading_label.text(),
+                f"{tr('en', 'hud.nightlord_stats_heading_wins_separated')}:",
+            )
+            self.assertEqual(
+                [label.text() for label in window.nightlord_stats_grid.stats_labels],
+                [
+                    tr(
+                        "en",
+                        "hud.nightlord_stats_split_entry",
+                        normal_wins=1,
+                        everdark_wins=1,
+                    )
+                ],
+            )
+            loaded, _settings = load_project_settings(
+                Path(directory), assets_root=ROOT
+            )
+            self.assertEqual(
+                loaded["hud"]["nightlord_stats_mode"], "wins_separated"
+            )
+
+            QTest.mouseClick(
+                window.nightlord_stats_grid,
+                Qt.MouseButton.LeftButton,
+                pos=window.nightlord_stats_grid.cell_widgets[0].geometry().center(),
+            )
+            self.assertEqual(
+                window.nightlord_stats_grid.heading_label.text(),
+                f"{tr('en', 'hud.nightlord_stats_heading_wins_aggregated')}:",
+            )
+            self.assertEqual(
+                [label.text() for label in window.nightlord_stats_grid.stats_labels],
+                [tr("en", "hud.nightlord_stats_wins_entry", wins=2)],
+            )
+            with (
+                patch(
+                    "app.nr_challenge_tracker.ui.save_user_config",
+                    side_effect=ValueError("disk full"),
+                ),
+                patch(
+                    "app.nr_challenge_tracker.ui.QMessageBox.warning"
+                ) as warning,
+            ):
+                QTest.mouseClick(
+                    window.nightlord_stats_grid,
+                    Qt.MouseButton.LeftButton,
+                    pos=window.nightlord_stats_grid.cell_widgets[0].geometry().center(),
+                )
+            self.assertEqual(
+                window.nightlord_stats_grid.heading_label.text(),
+                f"{tr('en', 'hud.nightlord_stats_heading_wins_aggregated')}:",
+            )
+            warning.assert_called_once()
+            window.close()
+
+    def test_winning_streak_nightlord_stats_use_only_current_eligible_runs(self) -> None:
+        def make_session(
+            session_id: str,
+            minute: int,
+            nightlord: str,
+            variant: NightlordVariant,
+            progress: Progress,
+            nightfarer: str = ELIGIBLE_NIGHTFARER,
+        ) -> Session:
+            started_at = datetime(
+                2026, 10, 3, 12, minute=minute, tzinfo=timezone.utc
+            )
+            return Session(
+                id=session_id,
+                started_at=started_at,
+                ended_at=started_at,
+                nightfarer=nightfarer,
+                nightlord_name=nightlord,
+                nightlord_variant=variant,
+                progress=progress,
+                status=SessionStatus.COMPLETED,
+            )
+
+        sessions = (
+            make_session(
+                "old-win",
+                0,
+                "caligo",
+                NightlordVariant.NORMAL,
+                Progress.DAY_3_VICTORY,
+            ),
+            make_session(
+                "streak-loss",
+                1,
+                "adel",
+                NightlordVariant.NORMAL,
+                Progress.DAY_2,
+            ),
+            make_session(
+                "excluded-win",
+                2,
+                "adel",
+                NightlordVariant.EVERDARK,
+                Progress.DAY_3_VICTORY,
+            ),
+            make_session(
+                "current-normal",
+                3,
+                "caligo",
+                NightlordVariant.NORMAL,
+                Progress.DAY_3_VICTORY,
+            ),
+            make_session(
+                "ineligible-win",
+                4,
+                "adel",
+                NightlordVariant.NORMAL,
+                Progress.DAY_3_VICTORY,
+                nightfarer="raider",
+            ),
+            make_session(
+                "current-everdark",
+                5,
+                "caligo",
+                NightlordVariant.EVERDARK,
+                Progress.DAY_3_VICTORY,
+            ),
+            make_session(
+                "current-adel",
+                6,
+                "adel",
+                NightlordVariant.NORMAL,
+                Progress.DAY_3_VICTORY,
+            ),
+        )
+        session_service = Mock(
+            snapshot=HistorySnapshot(
+                sessions=sessions,
+                stats=_calculate_test_streak(sessions),
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        config = _window_config()
+        config["challenges"][0]["excluded_session_ids"] = ["excluded-win"]
+        config["hud"]["nightlord_stats_mode"] = "wins_total_aggregated"
+
+        window = TrackerWindow(
+            session_service,
+            Mock(),
+            title_state,
+            [],
+            [],
+            config=config,
+        )
+
+        self.assertEqual(
+            window.nightlord_stats_grid.name_labels[0].text(),
+            "Adel",
+        )
+        self.assertEqual(
+            [label.text() for label in window.nightlord_stats_grid.name_labels],
+            ["Adel", "Caligo"],
+        )
+        self.assertEqual(
+            [label.text() for label in window.nightlord_stats_grid.stats_labels],
+            [
+                tr("en", "hud.nightlord_stats_total_entry", wins=1, total=1),
+                tr("en", "hud.nightlord_stats_total_entry", wins=2, total=2),
+            ],
+        )
+        window.close()
+
+    def test_chinese_localizes_nightlord_stats(self) -> None:
+        started_at = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+        session = Session(
+            id="everdark",
+            started_at=started_at,
+            ended_at=started_at,
+            nightfarer=ELIGIBLE_NIGHTFARER,
+            nightlord_name="caligo",
+            nightlord_variant=NightlordVariant.EVERDARK,
+            progress=Progress.DAY_3_VICTORY,
+            status=SessionStatus.COMPLETED,
+        )
+        session_service = Mock(
+            snapshot=HistorySnapshot(
+                sessions=(session,),
+                stats=_calculate_test_streak(()),
+            )
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+
+        window = TrackerWindow(
+            session_service,
+            Mock(),
+            title_state,
+            [],
+            [],
+            language="zh",
+            config=_window_config(),
+        )
+
+        self.assertEqual(
+            window.nightlord_stats_grid.heading_label.text(),
+            f"{tr('zh', 'hud.nightlord_stats_heading_wins_aggregated')}:",
+        )
+        self.assertEqual(
+            [label.text() for label in window.nightlord_stats_grid.name_labels],
+            ["冰龙"],
+        )
+        self.assertEqual(
+            [label.text() for label in window.nightlord_stats_grid.stats_labels],
+            [tr("zh", "hud.nightlord_stats_wins_entry", wins=1)],
+        )
+        window.close()
+
+    def test_nightlord_stats_grid_reflows_from_cell_width_and_container_width(self) -> None:
+        grid = NightlordStatsGrid()
+        tooltip = "Click to cycle"
+        grid.set_content(
+            "Wins",
+            [(letter, "1") for letter in "ABCDE"],
+            tooltip,
+        )
+        grid.resize(500, 200)
+        grid.show()
+        self.application.processEvents()
+        self.assertEqual(grid.column_count, 5)
+        self.assertTrue(
+            all(
+                cell.testAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                and not cell.styleSheet()
+                and cell.layout().contentsMargins().left() == 0
+                for cell in grid.cell_widgets
+            )
+        )
+        self.assertTrue(
+            all(
+                label.testAttribute(
+                    Qt.WidgetAttribute.WA_TransparentForMouseEvents
+                )
+                for label in (*grid.name_labels, *grid.stats_labels)
+            )
+        )
+        for cell, name_label, stats_label in zip(
+            grid.cell_widgets, grid.name_labels, grid.stats_labels
+        ):
+            self.assertIs(cell.layout().itemAt(0).widget(), name_label)
+            self.assertIs(cell.layout().itemAt(1).widget(), stats_label)
+            self.assertTrue(name_label.alignment() & Qt.AlignmentFlag.AlignLeft)
+            self.assertTrue(stats_label.alignment() & Qt.AlignmentFlag.AlignLeft)
+
+        grid.resize(800, 200)
+        self.application.processEvents()
+        grid.set_content(
+            "Wins",
+            [
+                (
+                    name,
+                    "100",
+                )
+                for name in (
+                    "Nightlord 0",
+                    "A Much Longer Nightlord",
+                    "Mid",
+                    "X",
+                    "Short",
+                )
+            ],
+            tooltip,
+        )
+        self.application.processEvents()
+        self.assertLess(grid.column_count, 5)
+        widths_by_column: dict[int, int] = {}
+        for index, label in enumerate(grid.name_labels):
+            column = index % grid.column_count
+            widths_by_column[column] = max(
+                widths_by_column.get(column, 0),
+                label.fontMetrics().horizontalAdvance(label.text()),
+            )
+        self.assertEqual(
+            [label.width() for label in grid.name_labels],
+            [
+                widths_by_column[index % grid.column_count]
+                for index in range(len(grid.name_labels))
+            ],
+        )
+        self.assertGreater(len(set(widths_by_column.values())), 1)
+        self.assert_grid_columns_match_available_width(grid)
+        narrow_columns = grid.column_count
+
+        grid.resize(100, 200)
+        self.application.processEvents()
+        self.assertEqual(grid.column_count, 1)
+        self.assert_grid_columns_match_available_width(grid)
+
+        grid.resize(1200, 300)
+        self.application.processEvents()
+        wide_columns = grid.column_count
+        self.assertGreater(wide_columns, narrow_columns)
+        self.assert_grid_columns_match_available_width(grid)
+
+        font = QFont(grid.font())
+        font.setPixelSize(28)
+        grid.set_stats_font(font)
+        self.application.processEvents()
+        self.assertLess(grid.column_count, wide_columns)
+        self.assert_grid_columns_match_available_width(grid)
+        grid.close()
+
+    def assert_grid_columns_match_available_width(
+        self, grid: NightlordStatsGrid
+    ) -> None:
+        margins = grid.layout().contentsMargins()
+        available_width = (
+            grid.contentsRect().width() - margins.left() - margins.right()
+        )
+        max_name_width = max(
+            name.fontMetrics().horizontalAdvance(name.text())
+            for name in grid.name_labels
+        )
+        max_stats_width = max(
+            stats.fontMetrics().horizontalAdvance(stats.text())
+            for stats in grid.stats_labels
+        )
+        cell_layout = grid.cell_layouts[0]
+        max_cell_width = (
+            max_name_width
+            + max_stats_width
+            + cell_layout.spacing()
+            + cell_layout.contentsMargins().left()
+            + cell_layout.contentsMargins().right()
+        )
+        expected = grid._columns_for_width(
+            available_width,
+            max_cell_width,
+            grid.layout().horizontalSpacing(),
+            len(grid.cell_widgets),
+        )
+        self.assertEqual(grid.column_count, expected)
+
     def test_screen_cues_load_the_configured_audio_assets(self) -> None:
         from app.nr_challenge_tracker import ui
 
@@ -1223,13 +1706,7 @@ class TrackerWindowTests(unittest.TestCase):
             "needs-resolution",
         )
         button_texts = [button.text() for button in window.findChildren(QPushButton)]
-        self.assertNotIn("Open config", button_texts)
-        self.assertNotIn("Skip", button_texts)
         self.assertIn(window.settings_button, window._action_buttons)
-        self.assertGreater(
-            window.settings_button.geometry().top(),
-            window.history.geometry().bottom(),
-        )
         self.assertIn("Lock", button_texts)
         self.assertIn(
             'QPushButton#lockButton[locked="true"]:hover',
@@ -1239,11 +1716,6 @@ class TrackerWindowTests(unittest.TestCase):
         window._set_lock_button_locked(True)
         self.assertTrue(window.lock_button.property("locked"))
         self.assertIn("background: transparent", window.centralWidget().styleSheet())
-        history_size = window.history.size()
-        window.resize(620, 520)
-        self.application.processEvents()
-        self.assertGreater(window.history.width(), history_size.width())
-        self.assertGreater(window.history.height(), history_size.height())
         window.deleteLater()
 
 

@@ -16,6 +16,7 @@ class StreakStats:
     total_eligible_victories: int
     target: int
     streak_numbers: Mapping[str, int]
+    current_streak_session_ids: frozenset[str] = frozenset()
 
 
 def calculate_streak(
@@ -53,14 +54,17 @@ def calculate_streak(
     best = 0
     total_victories = 0
     streak_numbers: dict[str, int] = {}
+    current_streak_session_ids: set[str] = set()
     for session in eligible:
         if session.progress is Progress.DAY_3_VICTORY:
             current += 1
             best = max(best, current)
             total_victories += 1
             streak_numbers[session.id] = current
+            current_streak_session_ids.add(session.id)
         else:
             current = 0
+            current_streak_session_ids.clear()
 
     return StreakStats(
         current_streak=min(current, target),
@@ -68,4 +72,5 @@ def calculate_streak(
         total_eligible_victories=total_victories,
         target=target,
         streak_numbers=streak_numbers,
+        current_streak_session_ids=frozenset(current_streak_session_ids),
     )

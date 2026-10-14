@@ -85,6 +85,7 @@ class ChallengeAnalysisTests(unittest.TestCase):
             analysis.streak_numbers,
             {"executor-win": 1, "other-win": 2},
         )
+        self.assertEqual(analysis.current_streak_session_ids, frozenset())
 
 
 class SessionOnlyHistoryTests(unittest.TestCase):

@@ -26,6 +26,17 @@ from .models import ANY_NIGHTFARER
 
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+NightlordStatsMode = Literal[
+    "wins_aggregated",
+    "wins_total_aggregated",
+    "wins_separated",
+]
+NIGHTLORD_STATS_MODES: tuple[NightlordStatsMode, ...] = (
+    "wins_aggregated",
+    "wins_total_aggregated",
+    "wins_separated",
+)
+DEFAULT_NIGHTLORD_STATS_MODE: NightlordStatsMode = "wins_aggregated"
 
 
 class _ConfigSection(BaseModel):
@@ -84,9 +95,16 @@ EDITABLE_CONFIG_PATHS = (
     ("hud", "font_size"),
     ("hud", "recent_sessions"),
     ("hud", "always_on_top"),
+    ("hud", "show_nightlord_stats"),
+    ("hud", "nightlord_stats_mode"),
     ("debug", "save_screenshots"),
 )
 
+SETTINGS_DIALOG_CONFIG_PATHS = tuple(
+    path
+    for path in EDITABLE_CONFIG_PATHS
+    if path != ("hud", "nightlord_stats_mode")
+)
 
 _EDITABLE_CONFIG_PATH_SET = frozenset(EDITABLE_CONFIG_PATHS)
 
@@ -131,6 +149,8 @@ class _HudConfig(_ConfigSection):
     font_size: int = Field(gt=0)
     recent_sessions: int = Field(gt=0)
     always_on_top: bool = True
+    show_nightlord_stats: bool = True
+    nightlord_stats_mode: NightlordStatsMode = DEFAULT_NIGHTLORD_STATS_MODE
 
 
 class _DebugConfig(_ConfigSection):
@@ -174,6 +194,7 @@ class AppSettings:
     hud_font_size: int
     hud_recent_sessions: int
     hud_always_on_top: bool
+    hud_show_nightlord_stats: bool
     debug_save_screenshots: bool
 
 
@@ -270,6 +291,7 @@ def validate_project_config(
         hud_font_size=config.hud.font_size,
         hud_recent_sessions=config.hud.recent_sessions,
         hud_always_on_top=config.hud.always_on_top,
+        hud_show_nightlord_stats=config.hud.show_nightlord_stats,
         debug_save_screenshots=config.debug.save_screenshots,
     )
     return copy.deepcopy(config.model_dump()), settings

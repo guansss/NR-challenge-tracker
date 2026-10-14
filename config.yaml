@@ -48,6 +48,8 @@ hud:
   font_size: 16
   recent_sessions: 10
   always_on_top: true
+  show_nightlord_stats: true
+  nightlord_stats_mode: wins_aggregated
 
 debug:
   save_screenshots: false

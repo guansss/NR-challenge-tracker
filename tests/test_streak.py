@@ -76,6 +76,7 @@ class StreakTests(unittest.TestCase):
             stats.streak_numbers,
             {"executor-win": 1, "recluse-win": 2, "unknown-win": 1},
         )
+        self.assertEqual(stats.current_streak_session_ids, frozenset({"unknown-win"}))
 
     def test_finalized_executor_nonvictory_resets_streak(self) -> None:
         sessions = [
@@ -91,6 +92,7 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.current_streak, 1)
         self.assertEqual(stats.best_streak, 1)
         self.assertEqual(stats.streak_numbers, {"win-1": 1, "win-2": 1})
+        self.assertEqual(stats.current_streak_session_ids, frozenset({"win-2"}))
 
     def test_unresolved_executor_session_has_no_effect(self) -> None:
         win = completed_session("win", 0, "executor", Progress.DAY_3_VICTORY)

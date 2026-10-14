@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from threading import RLock
 from typing import Iterable
@@ -23,6 +23,57 @@ FINAL_OUTCOMES = {
     Progress.DAY_3,
     Progress.DAY_3_VICTORY,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class NightlordVariantStats:
+    runs: int
+    wins: int
+
+
+@dataclass(frozen=True, slots=True)
+class NightlordStats:
+    normal: NightlordVariantStats
+    everdark: NightlordVariantStats
+
+
+def calculate_nightlord_stats(
+    sessions: Iterable[Session],
+) -> dict[str, NightlordStats]:
+    """Count completed runs and wins by known Nightlord and explicit variant."""
+    names: dict[str, str] = {}
+    counts: dict[str, dict[NightlordVariant, list[int]]] = {}
+    for session in sessions:
+        name = (session.nightlord_name or "").strip()
+        variant = session.nightlord_variant
+        if (
+            session.status is not SessionStatus.COMPLETED
+            or not name
+            or variant not in {NightlordVariant.NORMAL, NightlordVariant.EVERDARK}
+        ):
+            continue
+
+        key = name.casefold()
+        names.setdefault(key, name)
+        variants = counts.setdefault(
+            key,
+            {
+                NightlordVariant.NORMAL: [0, 0],
+                NightlordVariant.EVERDARK: [0, 0],
+            },
+        )
+        variant_counts = variants[variant]
+        variant_counts[0] += 1
+        if session.progress is Progress.DAY_3_VICTORY:
+            variant_counts[1] += 1
+
+    return {
+        names[key]: NightlordStats(
+            normal=NightlordVariantStats(*variants[NightlordVariant.NORMAL]),
+            everdark=NightlordVariantStats(*variants[NightlordVariant.EVERDARK]),
+        )
+        for key, variants in counts.items()
+    }
 
 
 class SessionTransitionError(ValueError):
