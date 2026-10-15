@@ -492,6 +492,7 @@ class TrackerWindow(QMainWindow):
         self.setWindowTitle(tr(language, "app.title"))
         self._apply_window_stay_on_top(always_on_top)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setMinimumWidth(100)
         self.resize(width, 420)
         if initial_geometry is not None:
             self.setGeometry(*initial_geometry)
@@ -527,9 +528,11 @@ class TrackerWindow(QMainWindow):
         layout.addLayout(header)
 
         self.goal_label = QLabel()
+        self.goal_label.setWordWrap(True)
         self.current_label = QLabel(tr(language, "hud.no_active_session"))
         self.current_label.setWordWrap(True)
         self.streak_label = QLabel("0 / 100")
+        self.streak_label.setWordWrap(True)
         self.streak_label.setStyleSheet("color: #9ed7ae;")
         self.nightlord_stats_grid = NightlordStatsGrid()
         self.nightlord_stats_grid.clicked.connect(
@@ -539,10 +542,12 @@ class TrackerWindow(QMainWindow):
         self._status_panel = status_panel
         status_panel.setDirection(QBoxLayout.Direction.TopToBottom)
         self.monitor_label = QLabel(tr(language, "monitor.starting"))
+        self.monitor_label.setWordWrap(True)
         self.monitor_label.setStyleSheet("color: #aaaaaa;")
         self.sync_label = QLabel(
             tr(language, "hud.title_sync", status=tr(language, "sync.pending"))
         )
+        self.sync_label.setWordWrap(True)
         self.sync_label.setStyleSheet("color: #aaaaaa;")
         status_panel.addWidget(self.monitor_label)
         status_panel.addWidget(self.sync_label)
@@ -551,7 +556,7 @@ class TrackerWindow(QMainWindow):
         self.history.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
         )
-        self.history.setMinimumHeight(150)
+        self.history.setMinimumHeight(1)
         layout.addWidget(self.goal_label)
         layout.addWidget(self.streak_label)
         layout.addWidget(self.current_label)
@@ -696,7 +701,7 @@ class TrackerWindow(QMainWindow):
         self.close_button.setFont(panel_font)
         goal_font = QFont(panel_font)
         goal_font.setPixelSize(round(font_size * 0.8))
-        self.goal_label.setFont(panel_font)
+        self.goal_label.setFont(goal_font)
         current_font = QFont(panel_font)
         current_font.setWeight(QFont.Weight.DemiBold)
         self.current_label.setFont(current_font)

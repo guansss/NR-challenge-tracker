@@ -403,7 +403,7 @@ hud:
     zh: "{wins}/{total}"
   nightlord_stats_split_entry:
     en: "Base {normal_wins} · ED {everdark_wins}"
-    zh: "普通 {normal_wins} · 永夜 {everdark_wins}"
+    zh: "普{normal_wins} · 王{everdark_wins}"
   nightlord_stats_click_tooltip:
     en: "Click to cycle the stats display"
     zh: "点击切换统计显示模式"
