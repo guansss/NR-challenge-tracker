@@ -39,8 +39,10 @@ class Challenge:
         else:
             if not isinstance(self.eligible_nightfarer, str) or not self.eligible_nightfarer.strip():
                 raise ValueError("Winning Streak Challenges require an eligible Nightfarer")
-            if isinstance(self.target, bool) or not isinstance(self.target, int) or self.target <= 0:
-                raise ValueError("Winning Streak Challenge target must be a positive integer")
+            if isinstance(self.target, bool) or not isinstance(self.target, int) or self.target < 0:
+                raise ValueError(
+                    "Winning Streak Challenge target must be a non-negative integer"
+                )
 
 
 @dataclass(frozen=True, slots=True)

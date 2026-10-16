@@ -23,7 +23,7 @@ def _normal_analysis():
     return analyze_challenge((session,), Challenge("normal", "Normal", ChallengeType.NORMAL))
 
 
-def _streak_analysis():
+def _streak_analysis(target: int = 100):
     started = datetime(2026, 10, 3, tzinfo=UTC)
     session = Session(
         id="win",
@@ -37,7 +37,7 @@ def _streak_analysis():
         (session,),
         Challenge(
             "streak", "Streak", ChallengeType.WINNING_STREAK,
-            eligible_nightfarer="executor", target=100,
+            eligible_nightfarer="executor", target=target,
         ),
     )
 
@@ -135,6 +135,18 @@ class StateRepositoryTests(unittest.TestCase):
             {key: view[key] for key in ("wins", "total", "streak", "goal")},
             {"wins": 0, "total": 0, "streak": 1, "goal": 100},
         )
+
+    def test_zero_goal_remains_zero_in_title_template(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = TitleState(
+                StateRepository(Path(directory) / "state.json"),
+                "Streak {streak}/{goal}",
+            )
+
+            view = state.update(_streak_analysis(target=0))
+
+        self.assertEqual(view["desired_title"], "Streak 1/0")
+        self.assertEqual(view["goal"], 0)
 
     def test_revision_and_sync_status_survive_restart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

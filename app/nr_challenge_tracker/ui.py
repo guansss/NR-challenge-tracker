@@ -833,7 +833,20 @@ class TrackerWindow(QMainWindow):
             self.goal_label.setText(
                 tr(self.language, "hud.goal", nightfarer=nightfarer_name)
             )
-            self.streak_label.setText(tr(self.language, "hud.streak", current=analysis.streak.current_streak, target=analysis.streak.target, best=analysis.streak.best_streak))
+            streak_message = (
+                "hud.streak_no_goal"
+                if analysis.streak.target == 0
+                else "hud.streak"
+            )
+            streak_values = {
+                "current": analysis.streak.current_streak,
+                "best": analysis.streak.best_streak,
+            }
+            if analysis.streak.target != 0:
+                streak_values["target"] = analysis.streak.target
+            self.streak_label.setText(
+                tr(self.language, streak_message, **streak_values)
+            )
         else:
             self.goal_label.setText(tr(self.language, "hud.normal_goal"))
             self.streak_label.setText(tr(self.language, "hud.normal_totals", sessions=analysis.total_sessions, wins=analysis.total_wins))

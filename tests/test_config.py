@@ -248,6 +248,30 @@ class LanguageConfigTests(unittest.TestCase):
         self.assertEqual(config["hud"]["opacity"], 0.55)
         self.assertEqual(config["recognition"]["sampling"]["idle_ms"], 1000)
 
+    def test_user_config_accepts_zero_streak_goal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "challenges": [{
+                            "id": "wins",
+                            "name": "Executor wins",
+                            "type": "winning_streak",
+                            "eligible_nightfarer": "executor",
+                            "target": 0,
+                            "excluded_session_ids": [],
+                        }],
+                        "active_challenge_id": "wins",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config, _settings = load_project_settings(root, assets_root=ROOT)
+
+        self.assertEqual(config["challenges"][0]["target"], 0)
+
     def test_user_config_accepts_any_as_eligible_nightfarer(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

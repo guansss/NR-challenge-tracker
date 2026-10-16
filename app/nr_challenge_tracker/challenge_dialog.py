@@ -45,7 +45,7 @@ class ChallengeManagerDialog(QDialog):
         for value in nightfarers:
             self.nightfarer.addItem(localized_name(language, "nightfarers", value), value)
         self.target = QSpinBox()
-        self.target.setRange(1, 1_000_000)
+        self.target.setRange(0, 1_000_000)
         self.exclusions = QListWidget()
         self.exclusions.setMinimumHeight(220)
         form = QFormLayout()

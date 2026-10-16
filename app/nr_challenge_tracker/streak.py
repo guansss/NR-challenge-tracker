@@ -30,8 +30,8 @@ def calculate_streak(
     Completed outcomes for the eligible Nightfarer are applied in end-time
     order. Unknown, unresolved, interrupted, and discarded sessions have no effect.
     """
-    if isinstance(target, bool) or not isinstance(target, int) or target <= 0:
-        raise ValueError("Streak target must be a positive integer")
+    if isinstance(target, bool) or not isinstance(target, int) or target < 0:
+        raise ValueError("Streak target must be a non-negative integer")
     session_list = list(sessions)
     session_ids = [session.id for session in session_list]
     if len(session_ids) != len(set(session_ids)):

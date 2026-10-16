@@ -39,7 +39,8 @@ are shown in the HUD.
 - In **Settings**, select an **Active Challenge** or choose **Manage
   Challenges...** to create, edit, and delete Challenges. A **Normal** Challenge
   counts included sessions and victories. A **Winning Streak** Challenge has an
-  eligible Nightfarer (or **Any Nightfarer**) and a goal. **Any Nightfarer**
+  eligible Nightfarer (or **Any Nightfarer**) and a goal; set the goal to `0`
+  for no goal. **Any Nightfarer**
   counts completed runs across all characters, including runs with an unknown
   character. Excluding a session affects that Challenge's analysis, not run
   history.
@@ -69,7 +70,7 @@ template in **Settings**. Values not used by the active Challenge are `0`.
 | `{wins}` | Included victories | `0` |
 | `{total}` | Included sessions | `0` |
 | `{streak}` | `0` | Current streak |
-| `{goal}` | `0` | Streak target |
+| `{goal}` | `0` | Streak target, or `0` when there is no goal |
 
 For example: `Nightreign Winning Streak {streak}/{goal}`.
 

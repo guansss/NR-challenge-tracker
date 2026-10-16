@@ -377,6 +377,9 @@ hud:
   streak:
     en: "{current} / {target}  |  Best {best}"
     zh: "{current} / {target}  |  最佳 {best}"
+  streak_no_goal:
+    en: "Streak {current}  |  Best {best}"
+    zh: "{current} 连胜  |  最佳 {best}"
   goal:
     en: "Goal: {nightfarer} streak"
     zh: "目标：{nightfarer}连胜"

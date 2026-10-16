@@ -149,15 +149,21 @@ class StreakTests(unittest.TestCase):
                 [session, session], eligible_nightfarer=ELIGIBLE_NIGHTFARER
             )
 
-    def test_target_must_be_positive_integer(self) -> None:
-        with self.assertRaisesRegex(ValueError, "positive integer"):
-            calculate_streak(
-                [], target=0, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-            )
-        with self.assertRaisesRegex(ValueError, "positive integer"):
-            calculate_streak(
-                [], target=True, eligible_nightfarer=ELIGIBLE_NIGHTFARER
-            )
+    def test_zero_target_means_no_goal(self) -> None:
+        stats = calculate_streak(
+            [], target=0, eligible_nightfarer=ELIGIBLE_NIGHTFARER
+        )
+
+        self.assertEqual(stats.target, 0)
+        self.assertEqual(stats.current_streak, 0)
+
+    def test_target_must_be_a_non_negative_integer(self) -> None:
+        for target in (-1, True, 1.5):
+            with self.subTest(target=target):
+                with self.assertRaisesRegex(ValueError, "non-negative integer"):
+                    calculate_streak(
+                        [], target=target, eligible_nightfarer=ELIGIBLE_NIGHTFARER
+                    )
 
 
 if __name__ == "__main__":

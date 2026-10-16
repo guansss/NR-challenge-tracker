@@ -529,6 +529,24 @@ class ChallengeManagerDialogTests(unittest.TestCase):
 
         dialog.close()
 
+    def test_streak_goal_can_be_set_to_zero(self) -> None:
+        config = _window_config()
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (), ["executor"], parent, language="en"
+        )
+
+        dialog.type.setCurrentIndex(
+            dialog.type.findData(ChallengeType.WINNING_STREAK.value)
+        )
+        dialog.target.setValue(0)
+        dialog._store_selected()
+
+        self.assertEqual(dialog.target.minimum(), 0)
+        self.assertEqual(dialog.config["challenges"][0]["target"], 0)
+
+        dialog.close()
+
     def test_adding_challenge_with_blank_name_does_not_parse_unsaved_form(self) -> None:
         defaults = load_default_config(ROOT)
         config = load_default_config(ROOT)
@@ -685,6 +703,25 @@ class TrackerWindowTests(unittest.TestCase):
         )
 
         self.assertEqual(window.goal_label.text(), "Goal: Any Nightfarer streak")
+
+        window.close()
+
+    def test_hud_omits_zero_streak_goal(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        config = _window_config()
+        config["challenges"][0]["target"] = 0
+        window = TrackerWindow(
+            sessions, Mock(), title_state, [], [], config=config
+        )
+
+        self.assertEqual(window.streak_label.text(), "Streak 0  |  Best 0")
 
         window.close()
 

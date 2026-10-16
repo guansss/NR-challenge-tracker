@@ -87,6 +87,18 @@ class ChallengeAnalysisTests(unittest.TestCase):
         )
         self.assertEqual(analysis.current_streak_session_ids, frozenset())
 
+    def test_streak_challenge_accepts_zero_goal(self) -> None:
+        analysis = analyze_challenge(
+            self.sessions,
+            Challenge(
+                "no-goal", "No goal", ChallengeType.WINNING_STREAK,
+                frozenset(), "executor", 0,
+            ),
+        )
+
+        self.assertEqual(analysis.streak.target, 0)
+        self.assertEqual(analysis.streak.current_streak, 0)
+
 
 class SessionOnlyHistoryTests(unittest.TestCase):
     def test_legacy_history_is_rewritten_without_derived_data(self) -> None:
