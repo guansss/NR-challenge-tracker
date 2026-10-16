@@ -67,7 +67,7 @@ def calculate_streak(
             current_streak_session_ids.clear()
 
     return StreakStats(
-        current_streak=min(current, target),
+        current_streak=current,
         best_streak=best,
         total_eligible_victories=total_victories,
         target=target,

@@ -124,7 +124,7 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.current_streak, 1)
         self.assertEqual(stats.streak_numbers, {"later": 1})
 
-    def test_current_streak_is_capped_but_victory_history_is_not(self) -> None:
+    def test_current_streak_can_exceed_target(self) -> None:
         sessions = [
             completed_session(
                 f"win-{index}", index * 30, "executor", Progress.DAY_3_VICTORY
@@ -136,7 +136,7 @@ class StreakTests(unittest.TestCase):
             sessions, eligible_nightfarer=ELIGIBLE_NIGHTFARER
         )
 
-        self.assertEqual(stats.current_streak, 100)
+        self.assertEqual(stats.current_streak, 102)
         self.assertEqual(stats.target, 100)
         self.assertEqual(stats.best_streak, 102)
         self.assertEqual(stats.streak_numbers["win-101"], 102)
