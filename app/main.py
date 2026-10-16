@@ -78,6 +78,7 @@ def main() -> int:
                 lambda: _api_view(sessions, title_state, window),
                 title_state.report_sync,
                 RESOURCES / "app" / "integrations" / "bilibili.user.js",
+                lambda: window.userscript_connected.emit(),
             )
             if settings.api_enabled
             else None

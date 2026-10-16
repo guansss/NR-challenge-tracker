@@ -648,6 +648,28 @@ class TrackerWindowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_title_sync_status_appears_after_userscript_connects(self) -> None:
+        sessions = Mock(
+            snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))
+        )
+        title_state = Mock()
+        title_state.update.return_value = {
+            "sync_status": "sync.disabled",
+            "sync_message": "",
+        }
+        window = TrackerWindow(
+            sessions, Mock(), title_state, [], [], config=_window_config()
+        )
+
+        self.assertTrue(window.sync_label.isHidden())
+
+        window.userscript_connected.emit()
+        self.application.processEvents()
+
+        self.assertFalse(window.sync_label.isHidden())
+        self.assertIn("Disabled", window.sync_label.text())
+        window.close()
+
     def test_screen_entry_events_play_the_matching_cues(self) -> None:
         sessions = Mock(
             snapshot=HistorySnapshot(sessions=(), stats=_calculate_test_streak(()))

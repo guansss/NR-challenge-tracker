@@ -37,6 +37,7 @@ class TrackerApiTests(unittest.TestCase):
         }
         self.state_unavailable = False
         self.reports: list[tuple[str, int, str]] = []
+        self.connection_notifications = 0
 
         def get_state() -> dict[str, Any]:
             if self.state_unavailable:
@@ -46,6 +47,9 @@ class TrackerApiTests(unittest.TestCase):
         def report(status: str, revision: int, message: str) -> bool:
             self.reports.append((status, revision, message))
             return revision == self.state["revision"]
+
+        def notify_connected() -> None:
+            self.connection_notifications += 1
 
         self.userscript_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.userscript_directory.cleanup)
@@ -58,6 +62,7 @@ class TrackerApiTests(unittest.TestCase):
             get_state,
             report,
             self.userscript_path,
+            notify_connected,
         )
         self.userscript_path.write_text(
             "// ==UserScript==\nconst API_BASE = \"__LOCAL_API_BASE__\";\n",
@@ -120,6 +125,18 @@ class TrackerApiTests(unittest.TestCase):
             {key: payload[key] for key in ("wins", "total", "streak", "goal")},
             {"wins": 0, "total": 0, "streak": 3, "goal": 100},
         )
+        self.assertEqual(self.connection_notifications, 1)
+
+    def test_state_poll_notifies_only_once_after_success(self) -> None:
+        self.state_unavailable = True
+        status, _payload = self.request("GET", "/api/state")
+        self.assertEqual(status, 503)
+        self.assertEqual(self.connection_notifications, 0)
+
+        self.state_unavailable = False
+        self.request("GET", "/api/state")
+        self.request("GET", "/api/state")
+        self.assertEqual(self.connection_notifications, 1)
 
     def test_userscript_endpoint_serves_installable_script_with_bound_api_url(self) -> None:
         status, headers, content = self.request_raw("GET", "/bilibili.user.js")

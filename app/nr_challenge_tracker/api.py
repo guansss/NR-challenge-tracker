@@ -23,6 +23,7 @@ class TrackerApiServer:
         get_state: Callable[[], dict[str, Any]],
         report_sync: Callable[[str, int, str], bool],
         userscript_path: Path,
+        userscript_connected: Callable[[], None] | None = None,
     ) -> None:
         try:
             address = ipaddress.ip_address(host)
@@ -33,6 +34,9 @@ class TrackerApiServer:
         self.get_state = get_state
         self.report_sync = report_sync
         self.userscript_path = userscript_path
+        self._userscript_connected_callback = userscript_connected
+        self._userscript_connected = False
+        self._userscript_connected_lock = threading.Lock()
         self._userscript: bytes | None = None
         self._userscript_lock = threading.Lock()
         owner = self
@@ -60,6 +64,7 @@ class TrackerApiServer:
                     self._send(503, {"error": "state_unavailable"})
                     return
                 self._send(200, payload)
+                owner._notify_userscript_connected()
 
             def do_POST(self) -> None:
                 if self.path != "/api/sync-status":
@@ -120,6 +125,14 @@ class TrackerApiServer:
         self.base_url = f"http://{address_host}:{self.port}"
         self.userscript_url = f"{self.base_url}/bilibili.user.js"
         self._thread: threading.Thread | None = None
+
+    def _notify_userscript_connected(self) -> None:
+        with self._userscript_connected_lock:
+            if self._userscript_connected:
+                return
+            self._userscript_connected = True
+        if self._userscript_connected_callback is not None:
+            self._userscript_connected_callback()
 
     @property
     def userscript(self) -> bytes:

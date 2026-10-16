@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QDateTime, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QDateTime, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QFont, QMouseEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
@@ -446,6 +446,7 @@ class TrackerWindow(QMainWindow):
     updated = Signal(object, str)
     geometry_saved = Signal(int, int, int, int)
     settings_saved = Signal(object)
+    userscript_connected = Signal()
     _LOCK_HOTKEY_ID = 1
 
     def __init__(
@@ -549,6 +550,8 @@ class TrackerWindow(QMainWindow):
         )
         self.sync_label.setWordWrap(True)
         self.sync_label.setStyleSheet("color: #aaaaaa;")
+        self.sync_label.setVisible(False)
+        self.userscript_connected.connect(self._on_userscript_connected)
         status_panel.addWidget(self.monitor_label)
         status_panel.addWidget(self.sync_label)
         self.history = ToggleSelectionListWidget()
@@ -932,6 +935,7 @@ class TrackerWindow(QMainWindow):
                 total=len(history_sessions),
             )
         )
+
         count_item.setFlags(Qt.ItemFlag.NoItemFlags)
         self.history.addItem(count_item)
         self.history.doItemsLayout()
@@ -941,6 +945,11 @@ class TrackerWindow(QMainWindow):
             scroll_bar.setValue(
                 scroll_bar.maximum() if was_at_bottom else scroll_position
             )
+
+    @Slot()
+    def _on_userscript_connected(self) -> None:
+        self.refresh()
+        self.sync_label.setVisible(True)
 
     def _format_live_result(self, recognition: dict[str, Any]) -> str:
         nightlord_id = recognition.get("nightlord")
