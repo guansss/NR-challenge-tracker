@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from app.nr_challenge_tracker.history import HistoryRepository
-from app.nr_challenge_tracker.models import NightlordVariant, Progress
+from app.nr_challenge_tracker.models import NightlordVariant, Progress, SessionStatus
 from app.nr_challenge_tracker.monitor import RecognitionMonitor, ScreenDebouncer
 from app.nr_challenge_tracker.sessions import SessionService
 
@@ -183,6 +183,105 @@ class PreparationMonitorTests(unittest.TestCase):
             monitor._process(None)
 
             self.assertFalse(monitor._preparation_active)
+
+    def test_confirmed_preparation_reentry_interrupts_and_starts_new_session(self) -> None:
+        results = [
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "unknown"},
+            {"screen": "unknown"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+            )
+
+            for _ in results:
+                monitor._process(None)
+
+        recorded = sessions.snapshot.sessions
+        self.assertEqual(len(recorded), 2)
+        self.assertNotEqual(recorded[0].id, recorded[1].id)
+        self.assertEqual(recorded[0].status, SessionStatus.INTERRUPTED)
+        self.assertEqual(recorded[1].status, SessionStatus.ACTIVE)
+
+    def test_single_unknown_sample_does_not_split_preparation_session(self) -> None:
+        results = [
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "unknown"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+            )
+
+            for _ in results:
+                monitor._process(None)
+
+        recorded = sessions.snapshot.sessions
+        self.assertEqual(len(recorded), 1)
+        self.assertEqual(recorded[0].status, SessionStatus.ACTIVE)
+
+    def test_preparation_does_not_resume_an_interrupted_session(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = SessionService(
+                HistoryRepository(
+                    Path(temp_dir) / "history.yaml",
+                    eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                )
+            )
+            previous = sessions.start_session(
+                nightfarer="executor",
+                nightlord_name="adel",
+                hidden_nightlord=False,
+                started_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+            )
+            sessions.interrupt_active_sessions()
+            results = [
+                {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+                {"screen": "preparation", "nightfarer": "executor", "nightlord": "adel"},
+            ]
+            monitor = RecognitionMonitor(
+                FakeRecognitionEngine(results),
+                sessions,
+                "Nightreign",
+                lambda update, status: None,
+                confirmations=2,
+            )
+
+            for _ in results:
+                monitor._process(None)
+
+        recorded = sessions.snapshot.sessions
+        self.assertEqual(len(recorded), 2)
+        self.assertEqual(recorded[0].id, previous.id)
+        self.assertEqual(recorded[0].status, SessionStatus.INTERRUPTED)
+        self.assertEqual(recorded[1].status, SessionStatus.ACTIVE)
 
 
 class ResultMonitorTests(unittest.TestCase):

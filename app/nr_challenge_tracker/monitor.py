@@ -14,10 +14,15 @@ from typing import Any
 import cv2
 
 from .capture import WindowsWindowCapture, find_window_by_title, window_is_capturable
-from .models import NightlordVariant, Progress, Session, SessionStatus
+from .models import NightlordVariant, Progress, Session
 from .recognition import RecognitionEngine
 from .runtime_paths import application_root
-from .sessions import ACTIVE_STATUSES, SessionService, SessionTransitionError
+from .sessions import (
+    ACTIVE_STATUSES,
+    RUNNING_STATUSES,
+    SessionService,
+    SessionTransitionError,
+)
 
 
 class ScreenDebouncer:
@@ -92,6 +97,8 @@ class RecognitionMonitor:
         self._capture_ended = threading.Event()
         self._capture_error_detail = ""
         self._preparation_active = False
+        self._preparation_exit_count = 0
+        self._preparation_exited = False
         self.debug_dir = (
             Path(debug_dir)
             if debug_dir is not None
@@ -297,16 +304,25 @@ class RecognitionMonitor:
         recognized_session = None
         screen_entry = None
         if screen == "preparation":
+            self._preparation_exit_count = 0
             if self._result_active:
                 recognized_session = self._finish_result()
             if self._preparation_active:
                 recognized_session = self._handle_preparation(result)
             elif self.debouncer.observe(screen) == "preparation":
                 screen_entry = screen
+                if self._preparation_exited:
+                    previous_session = self._running_session()
+                    if previous_session is not None:
+                        self.sessions.interrupt(previous_session.id)
+                self._preparation_exit_count = 0
+                self._preparation_exited = False
                 self._preparation_active = True
                 recognized_session = self._handle_preparation(result)
         elif screen == "result":
             self._preparation_active = False
+            self._preparation_exit_count = 0
+            self._preparation_exited = False
             if self._result_active:
                 self._remember_result(result)
                 recognized_session = self._persist_complete_result()
@@ -323,6 +339,12 @@ class RecognitionMonitor:
                 self._remember_result(result)
                 recognized_session = self._persist_complete_result()
         else:
+            if self._preparation_active:
+                self._preparation_exit_count = 1
+            elif self._preparation_exit_count and not self._preparation_exited:
+                self._preparation_exit_count += 1
+            if self._preparation_exit_count >= self.debouncer.confirmations:
+                self._preparation_exited = True
             self._preparation_active = False
             if self._result_active:
                 recognized_session = self._finish_result()
@@ -349,6 +371,8 @@ class RecognitionMonitor:
     def _reset_screen_state(self) -> None:
         self.debouncer = ScreenDebouncer(self.debouncer.confirmations)
         self._preparation_active = False
+        self._preparation_exit_count = 0
+        self._preparation_exited = False
         self._result_active = False
         self._pending_result = {}
         self._result_session_id = None
@@ -365,31 +389,17 @@ class RecognitionMonitor:
             (
                 session
                 for session in reversed(self.sessions.snapshot.sessions)
-                if session.status in ACTIVE_STATUSES
+                if session.status in RUNNING_STATUSES
             ),
             None,
         )
         if pending is not None:
-            same_character = (pending.nightfarer or "").casefold() == nightfarer_id.casefold()
-            same_nightlord = pending.nightlord_hidden == hidden and (
-                hidden
-                or (pending.nightlord_name or "").casefold()
-                == nightlord_id.casefold()
+            return self.sessions.update_preparation(
+                pending.id,
+                nightfarer=nightfarer_id,
+                nightlord_name=None if hidden else nightlord_id,
+                hidden_nightlord=hidden,
             )
-            if (
-                pending.status is SessionStatus.INTERRUPTED
-                and same_character
-                and same_nightlord
-            ):
-                return self.sessions.resume_interrupted(pending.id)
-            elif pending.status is not SessionStatus.INTERRUPTED:
-                return self.sessions.update_preparation(
-                    pending.id,
-                    nightfarer=nightfarer_id,
-                    nightlord_name=None if hidden else nightlord_id,
-                    hidden_nightlord=hidden,
-                )
-            return None
         session = self.sessions.start_session(
             nightfarer=nightfarer_id,
             nightlord_name=None if hidden else nightlord_id,
@@ -398,6 +408,16 @@ class RecognitionMonitor:
         )
         self._publish("monitor.session_started", result)
         return session
+
+    def _running_session(self) -> Session | None:
+        return next(
+            (
+                session
+                for session in reversed(self.sessions.snapshot.sessions)
+                if session.status in RUNNING_STATUSES
+            ),
+            None,
+        )
 
     def _remember_result(self, result: dict[str, Any]) -> None:
         for field in ("nightlord", "variant", "outcome"):

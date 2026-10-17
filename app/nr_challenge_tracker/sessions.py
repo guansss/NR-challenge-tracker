@@ -12,9 +12,12 @@ from .history import HistoryRepository, HistorySnapshot
 from .models import NightlordVariant, Progress, Session, SessionStatus
 
 
-ACTIVE_STATUSES = {
+RUNNING_STATUSES = {
     SessionStatus.ACTIVE,
     SessionStatus.AWAITING_RESULT,
+}
+ACTIVE_STATUSES = {
+    *RUNNING_STATUSES,
     SessionStatus.INTERRUPTED,
 }
 FINAL_OUTCOMES = {
@@ -146,7 +149,7 @@ class SessionService:
             status=SessionStatus.ACTIVE,
         )
         with self._lock:
-            if any(existing.status in ACTIVE_STATUSES for existing in self._sessions):
+            if any(existing.status in RUNNING_STATUSES for existing in self._sessions):
                 raise SessionTransitionError("An active session already exists")
             self._commit([*self._sessions, session])
         return session
