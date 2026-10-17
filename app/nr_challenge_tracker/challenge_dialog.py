@@ -46,6 +46,13 @@ class ChallengeManagerDialog(QDialog):
             self.nightfarer.addItem(localized_name(language, "nightfarers", value), value)
         self.target = QSpinBox()
         self.target.setRange(0, 1_000_000)
+        self.initial_current_streak = QSpinBox()
+        self.initial_current_streak.setRange(0, 1_000_000)
+        self.initial_best_streak = QSpinBox()
+        self.initial_best_streak.setRange(0, 1_000_000)
+        self.initial_current_streak.valueChanged.connect(
+            self.initial_best_streak.setMinimum
+        )
         self.exclusions = QListWidget()
         self.exclusions.setMinimumHeight(220)
         form = QFormLayout()
@@ -53,6 +60,14 @@ class ChallengeManagerDialog(QDialog):
         form.addRow(tr(language, "challenge.type_label"), self.type)
         form.addRow(tr(language, "challenge.eligible_nightfarer"), self.nightfarer)
         form.addRow(tr(language, "challenge.target"), self.target)
+        form.addRow(
+            tr(language, "challenge.initial_current_streak"),
+            self.initial_current_streak,
+        )
+        form.addRow(
+            tr(language, "challenge.initial_best_streak"),
+            self.initial_best_streak,
+        )
         form.addRow(QLabel(tr(language, "challenge.exclusions")), self.exclusions)
         add = QPushButton(tr(language, "challenge.add"))
         remove = QPushButton(tr(language, "challenge.delete"))
@@ -132,9 +147,13 @@ class ChallengeManagerDialog(QDialog):
         if challenge["type"] == ChallengeType.WINNING_STREAK.value:
             challenge["eligible_nightfarer"] = self.nightfarer.currentData()
             challenge["target"] = self.target.value()
+            challenge["initial_current_streak"] = self.initial_current_streak.value()
+            challenge["initial_best_streak"] = self.initial_best_streak.value()
         else:
             challenge.pop("eligible_nightfarer", None)
             challenge.pop("target", None)
+            challenge.pop("initial_current_streak", None)
+            challenge.pop("initial_best_streak", None)
 
     def _load_selected(self) -> None:
         self._store_selected(self._current_challenge_id)
@@ -151,6 +170,11 @@ class ChallengeManagerDialog(QDialog):
             )
         )
         self.target.setValue(challenge.get("target", 100))
+        self.initial_current_streak.setValue(
+            challenge.get("initial_current_streak", 0)
+        )
+        self.initial_best_streak.setMinimum(self.initial_current_streak.value())
+        self.initial_best_streak.setValue(challenge.get("initial_best_streak", 0))
         excluded = set(challenge.get("excluded_session_ids", []))
         self.exclusions.clear()
         for session in sorted(self.sessions, key=lambda value: value.started_at, reverse=True):
@@ -196,6 +220,8 @@ class ChallengeManagerDialog(QDialog):
         enabled = self.type.currentData() == ChallengeType.WINNING_STREAK.value
         self.nightfarer.setEnabled(enabled)
         self.target.setEnabled(enabled)
+        self.initial_current_streak.setEnabled(enabled)
+        self.initial_best_streak.setEnabled(enabled)
 
     def _add(self) -> None:
         self._store_selected(self._current_challenge_id)

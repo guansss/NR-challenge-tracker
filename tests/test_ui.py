@@ -497,6 +497,33 @@ class ChallengeManagerDialogTests(unittest.TestCase):
 
         dialog.close()
 
+    def test_initial_streak_values_are_saved_and_best_tracks_current_minimum(self) -> None:
+        config = _window_config()
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, (), ["executor"], parent, language="en"
+        )
+
+        self.assertTrue(dialog.initial_current_streak.isEnabled())
+        self.assertTrue(dialog.initial_best_streak.isEnabled())
+        dialog.initial_current_streak.setValue(5)
+        self.assertEqual(dialog.initial_best_streak.minimum(), 5)
+        dialog.initial_best_streak.setValue(12)
+        dialog._store_selected()
+
+        self.assertEqual(
+            dialog.config["challenges"][0]["initial_current_streak"], 5
+        )
+        self.assertEqual(dialog.config["challenges"][0]["initial_best_streak"], 12)
+
+        dialog.type.setCurrentIndex(
+            dialog.type.findData(ChallengeType.NORMAL.value)
+        )
+        self.assertFalse(dialog.initial_current_streak.isEnabled())
+        self.assertFalse(dialog.initial_best_streak.isEnabled())
+
+        dialog.close()
+
     def test_adding_challenge_with_blank_name_does_not_parse_unsaved_form(self) -> None:
         defaults = load_default_config(ROOT)
         config = load_default_config(ROOT)

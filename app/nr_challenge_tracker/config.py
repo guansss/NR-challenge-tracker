@@ -498,6 +498,8 @@ def _challenge_from_config(raw: Any) -> Challenge:
             excluded_session_ids=frozenset(excluded),
             eligible_nightfarer=raw.get("eligible_nightfarer"),
             target=raw.get("target"),
+            initial_current_streak=raw.get("initial_current_streak", 0),
+            initial_best_streak=raw.get("initial_best_streak", 0),
         )
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f"Invalid user configuration: Challenge: {error}") from error
@@ -517,6 +519,8 @@ def _challenge_to_config(challenge: Challenge) -> dict[str, Any]:
     if challenge.type is ChallengeType.WINNING_STREAK:
         result["eligible_nightfarer"] = challenge.eligible_nightfarer
         result["target"] = challenge.target
+        result["initial_current_streak"] = challenge.initial_current_streak
+        result["initial_best_streak"] = challenge.initial_best_streak
     return result
 
 

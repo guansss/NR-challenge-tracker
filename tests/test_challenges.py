@@ -10,7 +10,11 @@ from app.nr_challenge_tracker.challenges import (
     ChallengeType,
     analyze_challenge,
 )
-from app.nr_challenge_tracker.config import load_project_settings
+from app.nr_challenge_tracker.config import (
+    load_default_config,
+    load_project_settings,
+    save_user_config,
+)
 from app.nr_challenge_tracker.history import HistoryRepository
 from app.nr_challenge_tracker.models import (
     ANY_NIGHTFARER,
@@ -99,6 +103,35 @@ class ChallengeAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.streak.target, 0)
         self.assertEqual(analysis.streak.current_streak, 0)
 
+    def test_streak_challenge_uses_initial_streak_values(self) -> None:
+        analysis = analyze_challenge(
+            (self.sessions[0],),
+            Challenge(
+                "seeded", "Seeded", ChallengeType.WINNING_STREAK,
+                frozenset(), "executor", 100, 5, 12,
+            ),
+        )
+
+        self.assertEqual(analysis.streak.current_streak, 6)
+        self.assertEqual(analysis.streak.best_streak, 12)
+        self.assertEqual(analysis.streak_numbers, {"executor-win": 6})
+        self.assertEqual(analysis.total_wins, 1)
+
+    def test_normal_challenge_rejects_nonzero_initial_streaks(self) -> None:
+        with self.assertRaisesRegex(ValueError, "streak settings"):
+            Challenge(
+                "normal", "Normal", ChallengeType.NORMAL,
+                initial_current_streak=1,
+                initial_best_streak=1,
+            )
+
+    def test_best_initial_streak_cannot_be_below_current_streak(self) -> None:
+        with self.assertRaisesRegex(ValueError, "cannot be lower"):
+            Challenge(
+                "seeded", "Seeded", ChallengeType.WINNING_STREAK,
+                frozenset(), "executor", 100, 3, 2,
+            )
+
 
 class SessionOnlyHistoryTests(unittest.TestCase):
     def test_legacy_history_is_rewritten_without_derived_data(self) -> None:
@@ -186,6 +219,81 @@ class ChallengeConfigTests(unittest.TestCase):
             [challenge["name"] for challenge in config["challenges"]],
             ["Same name", "Same name"],
         )
+
+    def test_streak_initial_values_default_to_zero_and_round_trip(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "user-config.yaml"
+            challenge = {
+                "id": "streak",
+                "name": "Streak",
+                "type": "winning_streak",
+                "eligible_nightfarer": "executor",
+                "target": 100,
+                "excluded_session_ids": [],
+            }
+            config_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "challenges": [challenge],
+                        "active_challenge_id": "streak",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config, _settings = load_project_settings(
+                Path(directory), assets_root=root
+            )
+
+            self.assertEqual(
+                config["challenges"][0]["initial_current_streak"], 0
+            )
+            self.assertEqual(config["challenges"][0]["initial_best_streak"], 0)
+            config["challenges"][0]["initial_current_streak"] = 5
+            config["challenges"][0]["initial_best_streak"] = 12
+            save_user_config(Path(directory), load_default_config(root), config)
+
+            persisted = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            reloaded, _settings = load_project_settings(
+                Path(directory), assets_root=root
+            )
+
+        self.assertEqual(
+            persisted["challenges"][0]["initial_current_streak"], 5
+        )
+        self.assertEqual(persisted["challenges"][0]["initial_best_streak"], 12)
+        self.assertEqual(
+            reloaded["challenges"][0]["initial_current_streak"], 5
+        )
+        self.assertEqual(reloaded["challenges"][0]["initial_best_streak"], 12)
+
+    def test_best_initial_streak_must_not_be_below_current_streak(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "user-config.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "challenges": [
+                            {
+                                "id": "streak",
+                                "name": "Streak",
+                                "type": "winning_streak",
+                                "eligible_nightfarer": "executor",
+                                "target": 100,
+                                "initial_current_streak": 5,
+                                "initial_best_streak": 4,
+                                "excluded_session_ids": [],
+                            }
+                        ],
+                        "active_challenge_id": "streak",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "cannot be lower"):
+                load_project_settings(Path(directory), assets_root=root)
 
 
 if __name__ == "__main__":

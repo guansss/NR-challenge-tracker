@@ -32,6 +32,7 @@ The challenge rules are:
 5. Correcting or discarding a session must cause affected statistics to be reconciled.
 6. Historical streak labels remain associated with the original completed victories, even after subsequent resets.
 7. The target is 100 consecutive Executor victories. At 100, the title remains at `100/100`; further sessions may still be recorded, but the challenge counter shall not exceed 100 unless a future configuration explicitly changes this behavior.
+8. A winning-streak Challenge may specify an initial current streak and initial best streak. These values describe the state immediately before its earliest included recorded session; the first included victory continues the current streak, while an included non-victory resets it. The initial best must be at least the initial current streak. Both values default to zero.
 
 ### 1.3 Goals
 
@@ -1014,6 +1015,9 @@ Diagnostic logs should include timestamps, screen classifications, confidence va
 - Other Nightfarers neither increment nor reset the Executor streak.
 - An unresolved session has no effect until resolved.
 - Historical labels remain stable after subsequent streak resets.
+- A configured initial current streak continues numbering on the first recorded victory.
+- A configured initial best streak is preserved when it exceeds all observed streaks.
+- Missing initial streak values default to zero for existing configurations.
 - Corrections and discarded records trigger consistent recomputation.
 - `best_streak` and `total_executor_victories` match the authoritative history.
 - The challenge count never exceeds 100 under the default configuration.

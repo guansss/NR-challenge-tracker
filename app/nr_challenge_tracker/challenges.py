@@ -23,6 +23,8 @@ class Challenge:
     excluded_session_ids: frozenset[str] = field(default_factory=frozenset)
     eligible_nightfarer: str | None = None
     target: int | None = None
+    initial_current_streak: int = 0
+    initial_best_streak: int = 0
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id.strip():
@@ -33,8 +35,21 @@ class Challenge:
             raise TypeError("Challenge type must be a ChallengeType")
         if any(not isinstance(value, str) or not value.strip() for value in self.excluded_session_ids):
             raise ValueError("Excluded session ids must be non-empty strings")
+        for name, value in (
+            ("Initial current streak", self.initial_current_streak),
+            ("Initial best streak", self.initial_best_streak),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+        if self.initial_best_streak < self.initial_current_streak:
+            raise ValueError("Initial best streak cannot be lower than initial current streak")
         if self.type is ChallengeType.NORMAL:
-            if self.eligible_nightfarer is not None or self.target is not None:
+            if (
+                self.eligible_nightfarer is not None
+                or self.target is not None
+                or self.initial_current_streak != 0
+                or self.initial_best_streak != 0
+            ):
                 raise ValueError("Normal Challenges cannot have streak settings")
         else:
             if not isinstance(self.eligible_nightfarer, str) or not self.eligible_nightfarer.strip():
@@ -89,6 +104,8 @@ def analyze_challenge(
         included,
         target=challenge.target,
         eligible_nightfarer=challenge.eligible_nightfarer or "",
+        initial_current_streak=challenge.initial_current_streak,
+        initial_best_streak=challenge.initial_best_streak,
     )
     return ChallengeAnalysis(
         challenge=challenge,

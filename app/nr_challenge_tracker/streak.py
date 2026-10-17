@@ -24,6 +24,8 @@ def calculate_streak(
     target: int = 100,
     *,
     eligible_nightfarer: str,
+    initial_current_streak: int = 0,
+    initial_best_streak: int = 0,
 ) -> StreakStats:
     """Recompute challenge statistics and historical victory labels.
 
@@ -32,6 +34,14 @@ def calculate_streak(
     """
     if isinstance(target, bool) or not isinstance(target, int) or target < 0:
         raise ValueError("Streak target must be a non-negative integer")
+    for name, value in (
+        ("Initial current streak", initial_current_streak),
+        ("Initial best streak", initial_best_streak),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+    if initial_best_streak < initial_current_streak:
+        raise ValueError("Initial best streak cannot be lower than initial current streak")
     session_list = list(sessions)
     session_ids = [session.id for session in session_list]
     if len(session_ids) != len(set(session_ids)):
@@ -50,8 +60,8 @@ def calculate_streak(
         )
     )
 
-    current = 0
-    best = 0
+    current = initial_current_streak
+    best = initial_best_streak
     total_victories = 0
     streak_numbers: dict[str, int] = {}
     current_streak_session_ids: set[str] = set()

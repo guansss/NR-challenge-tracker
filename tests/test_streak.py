@@ -141,6 +141,39 @@ class StreakTests(unittest.TestCase):
         self.assertEqual(stats.best_streak, 102)
         self.assertEqual(stats.streak_numbers["win-101"], 102)
 
+    def test_initial_streak_values_seed_recorded_streaks(self) -> None:
+        sessions = [
+            completed_session("first-win", 0, "executor", Progress.DAY_3_VICTORY),
+            completed_session("loss", 30, "executor", Progress.DAY_2),
+            completed_session("later-win", 60, "executor", Progress.DAY_3_VICTORY),
+        ]
+
+        stats = calculate_streak(
+            sessions,
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            initial_current_streak=5,
+            initial_best_streak=12,
+        )
+
+        self.assertEqual(stats.current_streak, 1)
+        self.assertEqual(stats.best_streak, 12)
+        self.assertEqual(stats.total_eligible_victories, 2)
+        self.assertEqual(stats.streak_numbers, {"first-win": 6, "later-win": 1})
+        self.assertEqual(stats.current_streak_session_ids, frozenset({"later-win"}))
+
+    def test_initial_streak_is_retained_when_no_sessions_are_recorded(self) -> None:
+        stats = calculate_streak(
+            [],
+            eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+            initial_current_streak=5,
+            initial_best_streak=12,
+        )
+
+        self.assertEqual(stats.current_streak, 5)
+        self.assertEqual(stats.best_streak, 12)
+        self.assertEqual(stats.total_eligible_victories, 0)
+        self.assertEqual(stats.current_streak_session_ids, frozenset())
+
     def test_duplicate_session_ids_are_rejected(self) -> None:
         session = completed_session("same", 0, "executor", Progress.DAY_3_VICTORY)
 
@@ -164,6 +197,29 @@ class StreakTests(unittest.TestCase):
                     calculate_streak(
                         [], target=target, eligible_nightfarer=ELIGIBLE_NIGHTFARER
                     )
+
+    def test_initial_streak_values_must_be_non_negative_integers(self) -> None:
+        for field, value in (
+            ("initial_current_streak", -1),
+            ("initial_current_streak", True),
+            ("initial_best_streak", 1.5),
+        ):
+            with self.subTest(field=field, value=value):
+                with self.assertRaisesRegex(ValueError, "non-negative integer"):
+                    calculate_streak(
+                        [],
+                        eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                        **{field: value},
+                    )
+
+    def test_initial_best_streak_cannot_be_lower_than_initial_current(self) -> None:
+        with self.assertRaisesRegex(ValueError, "cannot be lower"):
+            calculate_streak(
+                [],
+                eligible_nightfarer=ELIGIBLE_NIGHTFARER,
+                initial_current_streak=3,
+                initial_best_streak=2,
+            )
 
 
 if __name__ == "__main__":

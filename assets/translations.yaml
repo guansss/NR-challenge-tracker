@@ -48,6 +48,12 @@ challenge:
   target:
     en: "Streak goal"
     zh: "连胜目标"
+  initial_current_streak:
+    en: "Starting current streak"
+    zh: "当前连胜起始值"
+  initial_best_streak:
+    en: "Starting best streak"
+    zh: "历史最佳连胜"
   exclusions:
     en: "Excluded sessions"
     zh: "排除场次"
