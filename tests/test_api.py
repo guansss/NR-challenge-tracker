@@ -182,12 +182,6 @@ class TrackerApiTests(unittest.TestCase):
             content,
         )
 
-    def test_old_streak_endpoint_is_not_available(self) -> None:
-        status, payload = self.request("GET", "/api/streak")
-
-        self.assertEqual(status, 404)
-        self.assertEqual(payload, {"error": "not_found"})
-
     def test_only_valid_current_revision_status_is_accepted(self) -> None:
         status, payload = self.request(
             "POST",

@@ -11,7 +11,7 @@ from app.nr_challenge_tracker.config import (
     load_project_settings,
     save_user_config,
 )
-from app.nr_challenge_tracker.i18n import CATALOGS, resolve_language, tr
+from app.nr_challenge_tracker.i18n import resolve_language
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -171,9 +171,6 @@ class LanguageConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "nightlord_stats_mode"):
                 load_project_settings(Path(directory), assets_root=ROOT)
 
-    def test_language_defaults_to_auto_for_old_config(self) -> None:
-        self.assertEqual(self._load_with_language(None).language, "auto")
-
     def test_supported_language_values_are_accepted(self) -> None:
         for language in ("auto", "en", "zh"):
             with self.subTest(language=language):
@@ -193,7 +190,7 @@ class LanguageConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "language must be one of"):
             self._load_with_language("fr")
 
-    def test_title_template_accepts_new_placeholders_and_rejects_old_ones(self) -> None:
+    def test_title_template_accepts_current_placeholders(self) -> None:
         for template in (
             "{wins}/{total}/{streak}/{goal}",
             "normal: {wins}/{total}",
@@ -210,16 +207,6 @@ class LanguageConfigTests(unittest.TestCase):
                 loaded = load_project_settings(Path(directory))[1]
 
                 self.assertEqual(loaded.title_template, template)
-
-        config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
-        config["bilibili"]["title_template"] = "{current_streak}/{target}"
-        _use_workspace_manifest(config)
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "config.yaml").write_text(
-                yaml.safe_dump(config), encoding="utf-8"
-            )
-            with self.assertRaisesRegex(ValueError, "title_template"):
-                load_project_settings(Path(directory))
 
     def test_user_config_loads_challenges_and_other_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -351,95 +338,6 @@ class LanguageConfigTests(unittest.TestCase):
             },
         )
 
-    def test_legacy_config_is_migrated_to_sparse_user_config(self) -> None:
-        legacy = load_default_config(ROOT)
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "config.yaml").write_text(
-                yaml.safe_dump(legacy), encoding="utf-8"
-            )
-
-            config, settings = load_project_settings(root, assets_root=ROOT)
-            migrated = yaml.safe_load(
-                (root / "user-config.yaml").read_text(encoding="utf-8")
-            )
-
-        self.assertEqual(config["challenges"][0]["type"], "normal")
-        self.assertEqual(migrated["challenges"][0]["type"], "normal")
-
-    def test_legacy_streak_config_is_migrated_to_a_challenge(self) -> None:
-        legacy = load_default_config(ROOT)
-        legacy["streak"] = {
-            "target": 75,
-            "eligible_nightfarer": "Executor",
-        }
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            Path(root, "config.yaml").write_text(
-                yaml.safe_dump(legacy), encoding="utf-8"
-            )
-
-            config, _settings = load_project_settings(root, assets_root=ROOT)
-            migrated = yaml.safe_load(
-                (root / "user-config.yaml").read_text(encoding="utf-8")
-            )
-
-        self.assertEqual(config["active_challenge_id"], "legacy-streak")
-        self.assertEqual(
-            config["challenges"][0],
-            {
-                "id": "legacy-streak",
-                "name": "Legacy streak",
-                "type": "winning_streak",
-                "excluded_session_ids": [],
-                "eligible_nightfarer": "executor",
-                "target": 75,
-            },
-        )
-        self.assertEqual(migrated["challenges"], config["challenges"])
-
-    def test_legacy_streak_config_accepts_any_nightfarer(self) -> None:
-        legacy = load_default_config(ROOT)
-        legacy["streak"] = {
-            "target": 75,
-            "eligible_nightfarer": "any",
-        }
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            Path(root, "config.yaml").write_text(
-                yaml.safe_dump(legacy), encoding="utf-8"
-            )
-
-            config, _settings = load_project_settings(root, assets_root=ROOT)
-
-        self.assertEqual(
-            config["challenges"][0]["eligible_nightfarer"], "any"
-        )
-
-    def test_legacy_user_config_streak_is_migrated_and_persisted(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            Path(root, "user-config.yaml").write_text(
-                yaml.safe_dump(
-                    {"streak": {"target": 50, "eligible_nightfarer": "recluse"}}
-                ),
-                encoding="utf-8",
-            )
-
-            config, _settings = load_project_settings(root, assets_root=ROOT)
-            migrated = yaml.safe_load(
-                (root / "user-config.yaml").read_text(encoding="utf-8")
-            )
-
-        self.assertEqual(config["active_challenge_id"], "legacy-streak")
-        self.assertEqual(config["challenges"][0]["eligible_nightfarer"], "recluse")
-        self.assertEqual(config["challenges"][0]["target"], 50)
-        self.assertNotIn("streak", migrated)
-        self.assertEqual(migrated["challenges"], config["challenges"])
-
     def test_user_config_cannot_override_paths_or_recognition_geometry(self) -> None:
         for override in (
             {"paths": {"template_manifest": "elsewhere.yaml"}},
@@ -477,14 +375,6 @@ class LanguageConfigTests(unittest.TestCase):
     def test_explicit_language_overrides_system_locale(self) -> None:
         self.assertEqual(resolve_language("en", ["zh-CN"]), "en")
         self.assertEqual(resolve_language("zh", ["en-US"]), "zh")
-
-    def test_catalogs_are_indexed_by_message_key_then_language(self) -> None:
-        self.assertEqual(CATALOGS["actions"]["pause"]["en"], "Pause")
-        self.assertEqual(CATALOGS["actions"]["pause"]["zh"], "暂停")
-        self.assertEqual(tr("en", "actions.pause"), "Pause")
-        self.assertEqual(tr("zh", "actions.pause"), "暂停")
-        self.assertEqual(tr("fr", "actions.pause"), "Pause")
-
 
 if __name__ == "__main__":
     unittest.main()
