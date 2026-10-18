@@ -88,6 +88,12 @@ class ChallengeManagerDialog(QDialog):
         right = QVBoxLayout()
         right.addLayout(form)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText(
+            tr(language, "common.save")
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(
+            tr(language, "common.cancel")
+        )
         buttons.accepted.connect(self._save)
         buttons.rejected.connect(self.reject)
         right.addWidget(buttons)
