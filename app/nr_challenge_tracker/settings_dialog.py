@@ -432,7 +432,15 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(
                 self,
                 tr(self.language, "settings.title"),
-                tr(self.language, "settings.invalid", error=str(error)),
+                tr(
+                    self.language,
+                    "settings.invalid",
+                    error=tr(
+                        self.language,
+                        "common.error_details",
+                        error=str(error),
+                    ),
+                ),
             )
             return
         self.saved_config = validated

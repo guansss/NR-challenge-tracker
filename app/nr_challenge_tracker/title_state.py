@@ -9,6 +9,10 @@ from .challenges import ChallengeAnalysis, ChallengeType
 from .state import SYNC_STATES, PersistedTitleState, StateRepository
 
 
+class InvalidTitleTemplateError(ValueError):
+    """The configured title template cannot be formatted with current values."""
+
+
 class TitleState:
     def __init__(
         self,
@@ -31,7 +35,9 @@ class TitleState:
         try:
             title = self.title_template.format(**values)
         except (KeyError, ValueError) as error:
-            raise ValueError(f"Invalid title template: {error}") from error
+            raise InvalidTitleTemplateError(
+                f"Invalid title template: {error}"
+            ) from error
         with self._lock:
             if title != self._desired_title:
                 self._desired_title = title

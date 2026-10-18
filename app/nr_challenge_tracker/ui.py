@@ -54,7 +54,7 @@ from .sessions import (
     calculate_nightlord_stats,
 )
 from .settings_dialog import SettingsDialog
-from .title_state import TitleState
+from .title_state import InvalidTitleTemplateError, TitleState
 
 _SCREEN_CUE_FILES = {
     "preparation": "correct.mp3",
@@ -688,7 +688,11 @@ class TrackerWindow(QMainWindow):
                 tr(
                     self.language,
                     "hud.nightlord_stats_save_error",
-                    error=str(error),
+                    error=tr(
+                        self.language,
+                        "common.error_details",
+                        error=str(error),
+                    ),
                 ),
             )
             return
@@ -820,10 +824,24 @@ class TrackerWindow(QMainWindow):
         )
         try:
             title_view = self.title_state.update(analysis)
-        except ValueError as error:
+        except InvalidTitleTemplateError:
             title_view = self.title_state.view(analysis)
             title_view["sync_status"] = "sync.title_rejected"
-            title_view["sync_message"] = str(error)
+            title_view["sync_message"] = tr(
+                self.language, "sync.title_template_invalid"
+            )
+        except ValueError as error:
+            title_view = self.title_state.view(analysis)
+            title_view["sync_status"] = "sync.error"
+            title_view["sync_message"] = tr(
+                self.language,
+                "sync.title_state_error",
+                error=tr(
+                    self.language,
+                    "common.error_details",
+                    error=str(error),
+                ),
+            )
         if analysis.challenge.type is ChallengeType.WINNING_STREAK:
             if analysis.streak is None:
                 raise RuntimeError("Winning Streak Challenge has no streak analysis")
@@ -1179,7 +1197,15 @@ class TrackerWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 tr(self.language, "errors.could_not_resolve"),
-                str(error),
+                tr(
+                    self.language,
+                    "errors.resolve_failure",
+                    error=tr(
+                        self.language,
+                        "common.error_details",
+                        error=str(error),
+                    ),
+                ),
             )
         self.refresh()
 

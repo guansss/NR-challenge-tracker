@@ -19,6 +19,12 @@ from .i18n import localized_name, tr
 from .models import ANY_NIGHTFARER, NightlordVariant, Progress, Session
 
 
+class _ChallengeValidationError(ValueError):
+    def __init__(self, translation_key: str) -> None:
+        super().__init__(translation_key)
+        self.translation_key = translation_key
+
+
 class ChallengeManagerDialog(QDialog):
     def __init__(
         self, config: dict[str, Any], sessions: tuple[Session, ...],
@@ -251,13 +257,27 @@ class ChallengeManagerDialog(QDialog):
         try:
             challenges = challenges_from_config(self.config)
             if len({challenge.id for challenge in challenges}) != len(challenges):
-                raise ValueError("Challenge ids must be unique")
+                raise _ChallengeValidationError("challenge.duplicate_ids")
             if self.config["active_challenge_id"] not in {
                 challenge.id for challenge in challenges
             }:
-                raise ValueError("The active Challenge must exist")
+                raise _ChallengeValidationError(
+                    "challenge.active_challenge_missing"
+                )
+        except _ChallengeValidationError as error:
+            error_message = tr(self.language, error.translation_key)
         except ValueError as error:
-            QMessageBox.warning(self, self.windowTitle(), str(error))
+            error_message = tr(
+                self.language,
+                "common.error_details",
+                error=str(error),
+            )
+        else:
+            self.saved_config = self.config
+            self.accept()
             return
-        self.saved_config = self.config
-        self.accept()
+        QMessageBox.warning(
+            self,
+            self.windowTitle(),
+            tr(self.language, "challenge.save_error", error=error_message),
+        )

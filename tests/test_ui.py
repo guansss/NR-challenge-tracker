@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QLabel,
-    QMessageBox,
     QWidget,
 )
 
@@ -36,7 +35,6 @@ from app.nr_challenge_tracker.models import (
 from app.nr_challenge_tracker.streak import calculate_streak
 from app.nr_challenge_tracker.settings_dialog import SettingsDialog
 from app.nr_challenge_tracker.ui import (
-    NightlordStatsGrid,
     ResolveSessionDialog,
     TrackerWindow,
 )
@@ -297,6 +295,44 @@ class SettingsDialogTests(unittest.TestCase):
 
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
         self.assertEqual(saved, {"hud": {"recent_sessions": 75}})
+
+    def test_invalid_settings_error_uses_the_selected_language(self) -> None:
+        defaults = load_default_config(ROOT)
+        for language in ("en", "zh"):
+            with tempfile.TemporaryDirectory() as directory:
+                dialog = SettingsDialog(
+                    Path(directory),
+                    defaults,
+                    defaults,
+                    ["executor"],
+                    language=language,
+                    assets_root=ROOT,
+                )
+                with (
+                    patch(
+                        "app.nr_challenge_tracker.settings_dialog.validate_project_config",
+                        side_effect=ValueError("invalid input"),
+                    ),
+                    patch(
+                        "app.nr_challenge_tracker.settings_dialog.QMessageBox.warning"
+                    ) as warning,
+                ):
+                    dialog._save()
+
+                warning.assert_called_once_with(
+                    dialog,
+                    tr(language, "settings.title"),
+                    tr(
+                        language,
+                        "settings.invalid",
+                        error=tr(
+                            language,
+                            "common.error_details",
+                            error="invalid input",
+                        ),
+                    ),
+                )
+                dialog.close()
 
     def test_nightlord_stats_visibility_can_be_saved(self) -> None:
         defaults = load_default_config(ROOT)
@@ -853,6 +889,18 @@ class TrackerWindowTests(unittest.TestCase):
                 f"{tr('en', 'hud.nightlord_stats_heading_wins_aggregated')}:",
             )
             warning.assert_called_once()
+            self.assertEqual(
+                warning.call_args.args[2],
+                tr(
+                    "en",
+                    "hud.nightlord_stats_save_error",
+                    error=tr(
+                        "en",
+                        "common.error_details",
+                        error="disk full",
+                    ),
+                ),
+            )
             window.close()
 
     def test_winning_streak_nightlord_stats_use_only_current_eligible_runs(self) -> None:

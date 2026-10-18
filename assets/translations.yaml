@@ -16,6 +16,9 @@ common:
   settings:
     en: "Settings"
     zh: "设置"
+  error_details:
+    en: "Technical details: {error}"
+    zh: "技术详情：{error}"
 
 challenge:
   manager_title:
@@ -60,6 +63,15 @@ challenge:
   last_cannot_delete:
     en: "At least one Challenge is required."
     zh: "至少需要保留一个挑战。"
+  save_error:
+    en: "Could not save challenges.\n\n{error}"
+    zh: "无法保存挑战。\n\n{error}"
+  duplicate_ids:
+    en: "Challenge IDs must be unique."
+    zh: "挑战 ID 必须唯一。"
+  active_challenge_missing:
+    en: "The active Challenge must exist."
+    zh: "当前挑战必须存在。"
   type:
     normal:
       en: "Normal"
@@ -99,8 +111,8 @@ settings:
     en: "Reset"
     zh: "重置"
   invalid:
-    en: "Settings were not saved: {error}"
-    zh: "设置未保存：{error}"
+    en: "Settings could not be saved. Check the values and file access, then try again.\n\n{error}"
+    zh: "设置无法保存。请检查设置值和文件访问权限，然后重试。\n\n{error}"
   apply_error:
     en: "Settings were saved, but the challenge could not be updated in the history file: {error}"
     zh: "设置已保存，但无法更新历史文件中的挑战设置：{error}"
@@ -420,8 +432,8 @@ hud:
     en: "Could not save stats mode"
     zh: "无法保存统计模式"
   nightlord_stats_save_error:
-    en: "Could not save the stats display mode: {error}"
-    zh: "无法保存统计显示模式：{error}"
+    en: "Could not save the stats display mode. Check that the settings file is writable.\n\n{error}"
+    zh: "无法保存统计显示模式。请检查设置文件是否可写。\n\n{error}"
   no_nightlord_stats:
     en: "No data"
     zh: "暂无"
@@ -466,6 +478,9 @@ errors:
   could_not_resolve:
     en: "Could not resolve session"
     zh: "无法修正场次"
+  resolve_failure:
+    en: "The session could not be corrected. Review the session details and try again.\n\n{error}"
+    zh: "无法修正场次。请检查场次信息后重试。\n\n{error}"
 
 monitor:
   starting:
@@ -490,11 +505,11 @@ monitor:
     en: "Monitoring {title}"
     zh: "正在监测：{title}"
   capture_error:
-    en: "Capture error: {detail}"
-    zh: "捕获错误：{detail}"
+    en: "Capture failed. Check that the game window is available and accessible.\n\nTechnical details: {detail}"
+    zh: "捕获失败。请检查游戏窗口是否可用且可访问。\n\n技术详情：{detail}"
   debug_screenshot_error:
-    en: "Debug screenshot error: {detail}"
-    zh: "调试截图错误：{detail}"
+    en: "Could not save a debug screenshot. Check the debug folder permissions.\n\nTechnical details: {detail}"
+    zh: "无法保存调试截图。请检查调试目录的访问权限。\n\n技术详情：{detail}"
   session_started:
     en: "Session started"
     zh: "场次已开始"
@@ -512,12 +527,18 @@ sync:
   retrying:
     en: "Retrying"
     zh: "正在重试"
-  authentication_required:
-    en: "Authentication required"
-    zh: "需要身份验证"
   title_rejected:
     en: "Title rejected"
     zh: "标题未被接受"
+  error:
+    en: "Error"
+    zh: "发生错误"
+  title_state_error:
+    en: "Could not update title synchronization state.\n\n{error}"
+    zh: "无法更新标题同步状态。\n\n{error}"
+  title_template_invalid:
+    en: "The title template is invalid. Review its placeholders in Settings."
+    zh: "标题模板无效。请在设置中检查占位符。"
   offline:
     en: "Offline"
     zh: "离线"
