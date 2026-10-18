@@ -65,14 +65,30 @@ Title syncing uses a userscript and requires a userscript manager to be installe
 Check the HUD's **Title sync** status and verify the result. Change the title
 template in **Settings**. Values not used by the active Challenge are `0`.
 
-| Placeholder | Normal Challenge | Winning Streak Challenge |
-| --- | --- | --- |
-| `{wins}` | Included victories | `0` |
-| `{total}` | Included sessions | `0` |
-| `{streak}` | `0` | Current streak |
-| `{goal}` | `0` | Streak target, or `0` when there is no goal |
+| Placeholder | Normal Challenge   | Winning Streak Challenge                    |
+| ----------- | ------------------ | ------------------------------------------- |
+| `{wins}`    | Included victories | `0`                                         |
+| `{total}`   | Included sessions  | `0`                                         |
+| `{streak}`  | `0`                | Current streak                              |
+| `{goal}`    | `0`                | Streak target, or `0` when there is no goal |
 
 For example: `Nightreign Winning Streak {streak}/{goal}`.
+
+## UI Customization
+
+Create `user-translations.yaml` beside the executable to override selected
+translations. It uses the same nested structure as [`assets/translations.yaml`](assets/translations.yaml);
+you only need to include the entries and languages you want to change. For
+example:
+
+```yaml
+common:
+  save:
+    en: Store
+```
+
+This changes the English **Save** label while keeping all other built-in
+translations. Nested mappings are merged recursively.
 
 ## Files, settings, and updates
 
@@ -80,6 +96,7 @@ The tracker stores files beside the executable:
 
 - `history.yaml` — run history.
 - `user-config.yaml` — settings, including Challenges.
+- `user-translations.yaml` — optional translation overrides.
 - `state.json` — HUD size and position.
 
 These files are local to the extracted folder. Before updating, close the
