@@ -18,11 +18,14 @@
   const POLL_INTERVAL_MS = 5000;
   const UI_SETTLE_MS = 300;
   const UI_TIMEOUT_MS = 5000;
+  const MAX_TITLE_UPDATE_ATTEMPTS = 3;
   const STORAGE_KEY = "nr-challenge-tracker-synced";
   let pollIntervalMs = POLL_INTERVAL_MS;
   let retryDelayMs = POLL_INTERVAL_MS;
   let trackerRetryDelayMs = POLL_INTERVAL_MS;
   let nextUpdateAt = 0;
+  let updateRevision = null;
+  let titleUpdateAttempts = 0;
 
   const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -97,7 +100,8 @@
       })
       .then(() => delay(UI_SETTLE_MS))
       .then(() => waitFor(
-        () => titleInput.value === title,
+        () => titleInput.value === title &&
+          !inputContainer.querySelector(".ai-title-panel"),
         "the room title to update",
       ));
   }
@@ -127,6 +131,13 @@
     }
     pollIntervalMs = payload.polling_interval_seconds * 1000;
 
+    if (updateRevision !== payload.revision) {
+      updateRevision = payload.revision;
+      titleUpdateAttempts = 0;
+      retryDelayMs = POLL_INTERVAL_MS;
+      nextUpdateAt = 0;
+    }
+
     let saved = null;
     try {
       saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
@@ -140,12 +151,21 @@
       await report("sync.synced", payload.revision);
       return;
     }
+    if (titleUpdateAttempts >= MAX_TITLE_UPDATE_ATTEMPTS) {
+      await report(
+        "sync.title_rejected",
+        payload.revision,
+        `Title update stopped after ${MAX_TITLE_UPDATE_ATTEMPTS} failed attempts.`,
+      );
+      return;
+    }
     if (Date.now() < nextUpdateAt) {
       await report("sync.retrying", payload.revision);
       return;
     }
 
     try {
+      titleUpdateAttempts += 1;
       await updateRoomTitle(payload.desired_title);
       localStorage.setItem(
         STORAGE_KEY,
@@ -155,13 +175,18 @@
       nextUpdateAt = 0;
       await report("sync.synced", payload.revision);
     } catch (error) {
+      const attemptsExhausted = titleUpdateAttempts >= MAX_TITLE_UPDATE_ATTEMPTS;
       await report(
-        "sync.retrying",
+        attemptsExhausted ? "sync.title_rejected" : "sync.retrying",
         payload.revision,
-        `Bilibili UI update failed: ${formatError(error) || "Unknown error"}`,
+        attemptsExhausted
+          ? `Title update stopped after ${MAX_TITLE_UPDATE_ATTEMPTS} failed attempts. Last error: ${formatError(error) || "Unknown error"}`
+          : `Bilibili UI update failed: ${formatError(error) || "Unknown error"}`,
       );
-      retryDelayMs = Math.min(Math.max(retryDelayMs * 2, POLL_INTERVAL_MS), 60000);
-      nextUpdateAt = Date.now() + retryDelayMs;
+      if (!attemptsExhausted) {
+        retryDelayMs = Math.min(Math.max(retryDelayMs * 2, POLL_INTERVAL_MS), 60000);
+        nextUpdateAt = Date.now() + retryDelayMs;
+      }
     }
   }
 
