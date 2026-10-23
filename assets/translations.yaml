@@ -57,6 +57,9 @@ challenge:
   initial_best_streak:
     en: "Starting best streak"
     zh: "历史最佳连胜"
+  start_time:
+    en: "Starting time"
+    zh: "开始时间"
   exclusions:
     en: "Excluded sessions"
     zh: "排除场次"

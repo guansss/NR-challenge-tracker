@@ -7,6 +7,7 @@ import ipaddress
 import os
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -21,7 +22,11 @@ from pydantic import (
     field_validator,
 )
 
-from .challenges import Challenge, ChallengeType
+from .challenges import (
+    DEFAULT_CHALLENGE_START_TIME,
+    Challenge,
+    ChallengeType,
+)
 from .models import ANY_NIGHTFARER
 
 
@@ -491,6 +496,11 @@ def _challenge_from_config(raw: Any) -> Challenge:
         excluded = raw.get("excluded_session_ids", [])
         if not isinstance(excluded, list):
             raise ValueError("excluded_session_ids must be a list")
+        start_time = raw.get("start_time", DEFAULT_CHALLENGE_START_TIME)
+        if isinstance(start_time, str):
+            start_time = datetime.fromisoformat(start_time)
+        if not isinstance(start_time, datetime):
+            raise TypeError("start_time must be an ISO 8601 datetime")
         return Challenge(
             id=raw["id"],
             name=raw["name"],
@@ -500,6 +510,7 @@ def _challenge_from_config(raw: Any) -> Challenge:
             target=raw.get("target"),
             initial_current_streak=raw.get("initial_current_streak", 0),
             initial_best_streak=raw.get("initial_best_streak", 0),
+            start_time=start_time,
         )
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f"Invalid user configuration: Challenge: {error}") from error
@@ -515,6 +526,7 @@ def _challenge_to_config(challenge: Challenge) -> dict[str, Any]:
         "name": challenge.name,
         "type": challenge.type.value,
         "excluded_session_ids": sorted(challenge.excluded_session_ids),
+        "start_time": challenge.start_time.isoformat(),
     }
     if challenge.type is ChallengeType.WINNING_STREAK:
         result["eligible_nightfarer"] = challenge.eligible_nightfarer

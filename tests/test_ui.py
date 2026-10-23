@@ -2,7 +2,7 @@ import os
 import tempfile
 import tomllib
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -10,7 +10,7 @@ import yaml
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtCore import QDateTime, QPoint, QPointF, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
@@ -491,6 +491,44 @@ class ChallengeManagerDialogTests(unittest.TestCase):
         )
 
         self.assertEqual(dialog.nightfarer.currentData(), ANY_NIGHTFARER)
+
+        dialog.close()
+
+    def test_pre_start_sessions_remain_visible_but_disabled(self) -> None:
+        start_time = datetime(2026, 10, 3, tzinfo=timezone.utc)
+        sessions = (
+            Session("before", start_time - timedelta(minutes=1)),
+            Session("boundary", start_time),
+            Session("after", start_time + timedelta(minutes=1)),
+        )
+        config = _window_config()
+        config["challenges"][0]["start_time"] = start_time.isoformat()
+        config["challenges"][0]["excluded_session_ids"] = ["before"]
+        parent = QWidget()
+        dialog = ChallengeManagerDialog(
+            config, sessions, ["executor"], parent, language="en"
+        )
+
+        items = {
+            dialog.exclusions.item(index).data(256): dialog.exclusions.item(index)
+            for index in range(dialog.exclusions.count())
+        }
+        self.assertEqual(set(items), {"before", "boundary", "after"})
+        self.assertFalse(items["before"].flags() & Qt.ItemFlag.ItemIsEnabled)
+        self.assertTrue(items["before"].checkState() is Qt.CheckState.Checked)
+        self.assertTrue(items["boundary"].flags() & Qt.ItemFlag.ItemIsEnabled)
+        self.assertTrue(items["after"].flags() & Qt.ItemFlag.ItemIsEnabled)
+
+        later_start = start_time + timedelta(minutes=1)
+        dialog.start_time.setDateTime(
+            QDateTime.fromSecsSinceEpoch(round(later_start.timestamp()))
+        )
+        self.assertFalse(items["boundary"].flags() & Qt.ItemFlag.ItemIsEnabled)
+        self.assertTrue(items["after"].flags() & Qt.ItemFlag.ItemIsEnabled)
+        dialog._store_selected()
+        self.assertEqual(
+            dialog.config["challenges"][0]["excluded_session_ids"], ["before"]
+        )
 
         dialog.close()
 

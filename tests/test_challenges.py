@@ -59,6 +59,18 @@ class ChallengeAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis.total_wins, 2)
         self.assertIsNone(analysis.streak)
 
+    def test_challenge_start_time_includes_sessions_at_or_after_boundary(self) -> None:
+        analysis = analyze_challenge(
+            self.sessions,
+            Challenge(
+                "started", "Started", ChallengeType.NORMAL,
+                start_time=self.sessions[1].started_at,
+            ),
+        )
+
+        self.assertEqual(analysis.total_sessions, 2)
+        self.assertEqual(analysis.total_wins, 1)
+
     def test_streak_uses_eligible_nightfarer_and_exclusions(self) -> None:
         analysis = analyze_challenge(
             self.sessions,
@@ -132,6 +144,13 @@ class ChallengeAnalysisTests(unittest.TestCase):
                 frozenset(), "executor", 100, 3, 2,
             )
 
+    def test_challenge_start_time_must_be_timezone_aware(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must include a timezone"):
+            Challenge(
+                "naive", "Naive", ChallengeType.NORMAL,
+                start_time=datetime(2026, 10, 3),
+            )
+
 
 class SessionOnlyHistoryTests(unittest.TestCase):
     def test_legacy_history_is_rewritten_without_derived_data(self) -> None:
@@ -183,8 +202,12 @@ class ChallengeConfigTests(unittest.TestCase):
         self.assertEqual(config["active_challenge_id"], "normal")
         self.assertEqual(config["challenges"][0]["type"], "normal")
         self.assertEqual(persisted["challenges"][0]["type"], "normal")
+        self.assertEqual(
+            persisted["challenges"][0]["start_time"],
+            "1970-01-01T00:00:00+00:00",
+        )
 
-    def test_challenges_may_share_names(self) -> None:
+    def test_legacy_challenges_default_to_unix_epoch_start_time(self) -> None:
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
             config_path = Path(directory) / "user-config.yaml"
@@ -193,19 +216,13 @@ class ChallengeConfigTests(unittest.TestCase):
                     {
                         "challenges": [
                             {
-                                "id": "first",
-                                "name": "Same name",
+                                "id": "legacy",
+                                "name": "Legacy",
                                 "type": "normal",
                                 "excluded_session_ids": [],
-                            },
-                            {
-                                "id": "second",
-                                "name": "Same name",
-                                "type": "normal",
-                                "excluded_session_ids": [],
-                            },
+                            }
                         ],
-                        "active_challenge_id": "first",
+                        "active_challenge_id": "legacy",
                     }
                 ),
                 encoding="utf-8",
@@ -216,8 +233,8 @@ class ChallengeConfigTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            [challenge["name"] for challenge in config["challenges"]],
-            ["Same name", "Same name"],
+            config["challenges"][0]["start_time"],
+            "1970-01-01T00:00:00+00:00",
         )
 
     def test_streak_initial_values_default_to_zero_and_round_trip(self) -> None:

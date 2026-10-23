@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout,
     QLabel, QListWidget, QListWidgetItem, QLineEdit, QMessageBox,
-    QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QPushButton, QDateTimeEdit, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from .challenges import ChallengeType
@@ -34,6 +35,7 @@ class ChallengeManagerDialog(QDialog):
         super().__init__(parent)
         self.config = deepcopy(config)
         self.sessions, self.nightfarers, self.language = sessions, nightfarers, language
+        self._sessions_by_id = {session.id: session for session in sessions}
         self.saved_config: dict[str, Any] | None = None
         self._current_challenge_id: str | None = None
         self.setWindowTitle(tr(language, "challenge.manager_title"))
@@ -59,6 +61,11 @@ class ChallengeManagerDialog(QDialog):
         self.initial_current_streak.valueChanged.connect(
             self.initial_best_streak.setMinimum
         )
+        self.start_time = QDateTimeEdit()
+        self.start_time.setCalendarPopup(True)
+        self.start_time.setDisplayFormat("yyyy/MM/dd HH:mm:ss")
+        self.start_time.setDateTime(QDateTime.fromSecsSinceEpoch(0))
+        self.start_time.dateTimeChanged.connect(self._update_exclusion_item_states)
         self.exclusions = QListWidget()
         self.exclusions.setMinimumHeight(220)
         form = QFormLayout()
@@ -74,6 +81,7 @@ class ChallengeManagerDialog(QDialog):
             tr(language, "challenge.initial_best_streak"),
             self.initial_best_streak,
         )
+        form.addRow(tr(language, "challenge.start_time"), self.start_time)
         form.addRow(QLabel(tr(language, "challenge.exclusions")), self.exclusions)
         add = QPushButton(tr(language, "challenge.add"))
         remove = QPushButton(tr(language, "challenge.delete"))
@@ -156,6 +164,11 @@ class ChallengeManagerDialog(QDialog):
             for index in range(self.exclusions.count())
             if self.exclusions.item(index).checkState() is Qt.CheckState.Checked
         ]
+        challenge["start_time"] = (
+            datetime.fromtimestamp(
+                self.start_time.dateTime().toSecsSinceEpoch(), timezone.utc
+            ).isoformat()
+        )
         if challenge["type"] == ChallengeType.WINNING_STREAK.value:
             challenge["eligible_nightfarer"] = self.nightfarer.currentData()
             challenge["target"] = self.target.value()
@@ -176,6 +189,10 @@ class ChallengeManagerDialog(QDialog):
         self._current_challenge_id = challenge["id"]
         self.name.setText(challenge["name"])
         self.type.setCurrentIndex(self.type.findData(challenge["type"]))
+        parsed_challenge = challenges_from_config({"challenges": [challenge]})[0]
+        self.start_time.setDateTime(
+            QDateTime.fromSecsSinceEpoch(round(parsed_challenge.start_time.timestamp()))
+        )
         self.nightfarer.setCurrentIndex(
             self.nightfarer.findData(
                 challenge.get("eligible_nightfarer", ANY_NIGHTFARER)
@@ -197,7 +214,23 @@ class ChallengeManagerDialog(QDialog):
                 Qt.CheckState.Checked if session.id in excluded else Qt.CheckState.Unchecked
             )
             self.exclusions.addItem(item)
+        self._update_exclusion_item_states()
         self._toggle_streak_fields()
+
+    def _update_exclusion_item_states(self) -> None:
+        start_time = datetime.fromtimestamp(
+            self.start_time.dateTime().toSecsSinceEpoch(), timezone.utc
+        )
+        for index in range(self.exclusions.count()):
+            item = self.exclusions.item(index)
+            session = self._sessions_by_id.get(item.data(256))
+            if session is None:
+                continue
+            flags = item.flags()
+            if session.started_at < start_time:
+                item.setFlags(flags & ~Qt.ItemFlag.ItemIsEnabled)
+            else:
+                item.setFlags(flags | Qt.ItemFlag.ItemIsEnabled)
 
     def _format_session(self, session: Session) -> str:
         nightfarer = (
@@ -240,6 +273,9 @@ class ChallengeManagerDialog(QDialog):
         new_challenge = {
             "id": str(uuid4()), "name": tr(self.language, "challenge.new"),
             "type": ChallengeType.NORMAL.value, "excluded_session_ids": [],
+            "start_time": (
+                datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+            ),
         }
         self.config["challenges"].append(new_challenge)
         self._populate(new_challenge["id"])

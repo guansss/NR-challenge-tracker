@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Iterable, Mapping
 
 from .models import Progress, Session, SessionStatus
 from .streak import StreakStats, calculate_streak
+
+
+DEFAULT_CHALLENGE_START_TIME = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 class ChallengeType(str, Enum):
@@ -25,6 +29,7 @@ class Challenge:
     target: int | None = None
     initial_current_streak: int = 0
     initial_best_streak: int = 0
+    start_time: datetime = DEFAULT_CHALLENGE_START_TIME
 
     def __post_init__(self) -> None:
         if not isinstance(self.id, str) or not self.id.strip():
@@ -33,6 +38,11 @@ class Challenge:
             raise ValueError("Challenge name must be a non-empty string")
         if not isinstance(self.type, ChallengeType):
             raise TypeError("Challenge type must be a ChallengeType")
+        if not isinstance(self.start_time, datetime):
+            raise TypeError("Challenge start time must be a datetime")
+        if self.start_time.tzinfo is None or self.start_time.utcoffset() is None:
+            raise ValueError("Challenge start time must include a timezone")
+        object.__setattr__(self, "start_time", self.start_time.astimezone(timezone.utc))
         if any(not isinstance(value, str) or not value.strip() for value in self.excluded_session_ids):
             raise ValueError("Excluded session ids must be non-empty strings")
         for name, value in (
@@ -87,7 +97,10 @@ def analyze_challenge(
     included = tuple(
         session
         for session in sessions
-        if session.id not in challenge.excluded_session_ids
+        if (
+            session.started_at >= challenge.start_time
+            and session.id not in challenge.excluded_session_ids
+        )
     )
     total_sessions = len(included)
     if challenge.type is ChallengeType.NORMAL:
