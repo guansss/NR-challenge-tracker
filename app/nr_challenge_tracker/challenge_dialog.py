@@ -120,7 +120,10 @@ class ChallengeManagerDialog(QDialog):
         self.challenge_list.blockSignals(True)
         self.challenge_list.clear()
         for challenge in self.config["challenges"]:
-            item = QListWidgetItem(challenge.get("name", ""))
+            name = challenge.get("name", "")
+            if challenge.get("id") == self.config["active_challenge_id"]:
+                name = f"{name} {tr(self.language, 'challenge.current')}"
+            item = QListWidgetItem(name)
             item.setData(256, challenge.get("id"))
             self.challenge_list.addItem(item)
         active = self.config["active_challenge_id"]

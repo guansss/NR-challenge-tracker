@@ -472,6 +472,44 @@ class ChallengeManagerDialogTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.application = QApplication.instance() or QApplication([])
 
+    def test_active_challenge_has_localized_current_marker_in_list(self) -> None:
+        config = load_default_config(ROOT)
+        config["challenges"] = [
+            {
+                "id": "first",
+                "name": "First Challenge",
+                "type": "normal",
+                "excluded_session_ids": [],
+            },
+            {
+                "id": "current",
+                "name": "Current Challenge",
+                "type": "normal",
+                "excluded_session_ids": [],
+            },
+        ]
+        config["active_challenge_id"] = "current"
+
+        for language, marker in (("en", "(current)"), ("zh", "(当前)")):
+            with self.subTest(language=language):
+                parent = QWidget()
+                dialog = ChallengeManagerDialog(
+                    config, (), ["executor"], parent, language=language
+                )
+
+                self.assertEqual(
+                    dialog.challenge_list.item(0).text(), "First Challenge"
+                )
+                self.assertEqual(
+                    dialog.challenge_list.item(1).text(),
+                    f"Current Challenge {marker}",
+                )
+                self.assertEqual(
+                    dialog.config["challenges"][1]["name"], "Current Challenge"
+                )
+
+                dialog.close()
+
     def test_missing_eligible_nightfarer_defaults_to_any(self) -> None:
         config = load_default_config(ROOT)
         config["challenges"] = [{

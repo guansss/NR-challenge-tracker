@@ -36,6 +36,9 @@ challenge:
   new:
     en: "New Challenge"
     zh: "新挑战"
+  current:
+    en: "(current)"
+    zh: "(当前)"
   name:
     en: "Name"
     zh: "名称"
